@@ -2,7 +2,7 @@ const fs = require("fs");
 const fsPromises = fs.promises;
 const path = require("path");
 const Cryptor = require("./Cryptor");
-const { stringHasValue, arrayHasValue } = require("./utils");
+const { stringHasValue, arrayHasValue, booleanHasValue } = require("./utils");
 
 const BUFFER_ENCODING = "utf-8";
 
@@ -27,6 +27,13 @@ const moduleFn = (function () {
   let entityFilesMap = null;
 
   /**
+   * environemnt enables data to be stored and retrieved in to/from different folders
+   * depending on which environemnt the client is on. Typically the value is either
+   * "dev" or "prod" or "test"
+   */
+  let environment = "dev";
+
+  /**
    * testMode is to use test folders when reading/writing data
    */
   let testMode = false;
@@ -44,10 +51,19 @@ const moduleFn = (function () {
     );
   };
 
-  const getDataFilePathBasedOnEntity = function (entity) {
-    return testMode
-      ? `${__dirname}/tests/data/${entityFilesMap[entity]}`
-      : `${__dirname}/data/${entityFilesMap[entity]}`;
+  // const getDataFilePathBasedOnEntity = function (entity) {
+  //   return testMode
+  //     ? `${__dirname}/tests/data/${environment}/${entityFilesMap[entity]}`
+  //     : `${__dirname}/data/${environment}/${entityFilesMap[entity]}`;
+  // };
+
+  const createDirectoryIfNotExist = async function (filePath) {
+    const fileDirectoryName = path.dirname(filePath);
+    if (fs.existsSync(fileDirectoryName)) {
+      return;
+    }
+    fs.mkdirSync(fileDirectoryName);
+    return;
   };
 
   return {
@@ -55,10 +71,14 @@ const moduleFn = (function () {
       cryptor = null;
       entityFilesMap = null;
     },
+    isInitialized: function () {
+      return hasBeenInitialized();
+    },
     initialize: function (
       cryptoSecret,
       vectorSecret,
       entities,
+      env = "dev",
       isTestMode = false
     ) {
       if (!hasBeenInitialized()) {
@@ -73,13 +93,18 @@ const moduleFn = (function () {
           );
         }
         cryptor = new Cryptor(cryptoSecret, vectorSecret);
+        testMode = booleanHasValue(isTestMode) ? isTestMode : false;
+        environment = stringHasValue(env) ? env : "dev";
         entityFilesMap = entities.reduce((prev, curr) => {
+          const dataFilePath = testMode
+            ? `${__dirname}/tests/data/${environment}/${curr}.json`
+            : `${__dirname}/data/${environment}/${curr}.json`;
+          createDirectoryIfNotExist(dataFilePath);
           return {
             ...prev,
-            [curr.toString()]: `${curr}.json`,
+            [curr.toString()]: dataFilePath,
           };
         }, {});
-        testMode = isTestMode;
         return;
       }
       //   console.log("Already initialised!");
@@ -88,14 +113,18 @@ const moduleFn = (function () {
       return entityFilesMap;
     },
     readSync: function (entity) {
+      if (!hasBeenInitialized()) {
+        throw new Error(
+          `Data Store has not been initialized yet. Make sure to initialize the module before performing data-related operations.`
+        );
+      }
       if (!entityIsValid(entity)) {
         throw new Error(
           `Invalid entity value [${entity}] provided for file READ.`
         );
       }
       try {
-        const dataFilePath = getDataFilePathBasedOnEntity(entity);
-        const dataStr = fs.readFileSync(path.resolve(dataFilePath), {
+        const dataStr = fs.readFileSync(path.resolve(entityFilesMap[entity]), {
           encoding: BUFFER_ENCODING,
         });
         const decryptedData = cryptor.decrypt(dataStr);
@@ -105,16 +134,23 @@ const moduleFn = (function () {
       }
     },
     readAsync: async function (entity) {
+      if (!hasBeenInitialized()) {
+        throw new Error(
+          `Data Store has not been initialized yet. Make sure to initialize the module before performing data-related operations.`
+        );
+      }
       if (!entityIsValid(entity)) {
         throw new Error(
           `Invalid entity value [${entity}] provided for file READ.`
         );
       }
       try {
-        const dataFilePath = getDataFilePathBasedOnEntity(entity);
-        const dataStr = await fsPromises.readFile(path.resolve(dataFilePath), {
-          encoding: BUFFER_ENCODING,
-        });
+        const dataStr = await fsPromises.readFile(
+          path.resolve(entityFilesMap[entity]),
+          {
+            encoding: BUFFER_ENCODING,
+          }
+        );
         const decryptedData = cryptor.decrypt(dataStr);
         return JSON.parse(decryptedData);
       } catch (error) {
@@ -122,6 +158,11 @@ const moduleFn = (function () {
       }
     },
     saveSync: function (entity, data) {
+      if (!hasBeenInitialized()) {
+        throw new Error(
+          `Data Store has not been initialized yet. Make sure to initialize the module before performing data-related operations.`
+        );
+      }
       if (!entityIsValid(entity)) {
         throw new Error(
           `Invalid entity value [${entity}] provided for file WRITE.`
@@ -130,30 +171,78 @@ const moduleFn = (function () {
       try {
         const dataStr = JSON.stringify(data);
         const encryptedData = cryptor.encrypt(dataStr);
-        const dataFilePath = getDataFilePathBasedOnEntity(entity);
-        fs.writeFileSync(path.resolve(dataFilePath), encryptedData, {
+
+        fs.writeFileSync(path.resolve(entityFilesMap[entity]), encryptedData, {
           encoding: BUFFER_ENCODING,
         });
+        return data;
+      } catch (error) {
+        console.log("ERROR while saveSync");
+        console.log(error);
+        throw new Error(error.message || error);
+      }
+    },
+    saveAsync: async function (entity, data) {
+      if (!hasBeenInitialized()) {
+        throw new Error(
+          `Data Store has not been initialized yet. Make sure to initialize the module before performing data-related operations.`
+        );
+      }
+      if (!entityIsValid(entity)) {
+        throw new Error(
+          `Invalid entity value [${entity}] provided for file WRITE.`
+        );
+      }
+      try {
+        const dataStr = JSON.stringify(data);
+        const encryptedData = cryptor.encrypt(dataStr);
+        await fsPromises.writeFile(
+          path.resolve(entityFilesMap[entity]),
+          encryptedData,
+          {
+            encoding: BUFFER_ENCODING,
+          }
+        );
         return data;
       } catch (error) {
         throw new Error(error.message || error);
       }
     },
-    saveAsync: async function (entity, data) {
+    dropSync: function (entity) {
+      if (!hasBeenInitialized()) {
+        throw new Error(
+          `Data Store has not been initialized yet. Make sure to initialize the module before performing data-related operations.`
+        );
+      }
       if (!entityIsValid(entity)) {
         throw new Error(
-          `Invalid entity value [${entity}] provided for file WRITE.`
+          `Invalid entity value [${entity}] provided for file READ.`
         );
       }
       try {
-        const dataStr = JSON.stringify(data);
-        const encryptedData = cryptor.encrypt(dataStr);
-        const dataFilePath = getDataFilePathBasedOnEntity(entity);
-        await fsPromises.writeFile(path.resolve(dataFilePath), encryptedData, {
-          encoding: BUFFER_ENCODING,
-        });
-        return data;
+        const path = entityFilesMap[entity];
+        if (fs.existsSync(path)) {
+          fs.unlinkSync(path);
+        }
+        delete entityFilesMap[entity];
       } catch (error) {
+        throw new Error(error.message || error);
+      }
+    },
+    dropAllSync: function () {
+      try {
+        if (entityFilesMap) {
+          Object.keys(entityFilesMap).forEach((e) => {
+            const path = entityFilesMap[e];
+            if (fs.existsSync(path)) {
+              fs.unlinkSync(path);
+            }
+            delete entityFilesMap[e];
+          });
+          entityFilesMap = null;
+        }
+      } catch (error) {
+        console.log(error);
         throw new Error(error.message || error);
       }
     },

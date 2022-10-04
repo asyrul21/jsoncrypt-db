@@ -6,4 +6,8 @@ const arrayHasValue = (arr) => {
   return arr && arr.length > 0;
 };
 
-module.exports = { stringHasValue, arrayHasValue };
+const booleanHasValue = (val) => {
+  return val === true || val === false;
+};
+
+module.exports = { stringHasValue, arrayHasValue, booleanHasValue };
