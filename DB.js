@@ -174,6 +174,33 @@ const moduleFn = (function () {
         throw new Error("Invalid or no data to be created.");
       }
     },
+    createManyNewFor: async function (entity, objDataArray) {
+      validateEntityForMethod(entity, "createNewFor");
+      if (!objDataArray || objDataArray.length < 1) {
+        return (entityDataMap[entity] = [...data]);
+      }
+      let data;
+      if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
+        data = entityDataMap[entity];
+      } else {
+        data = await DataReadWriter.readAsync(entity);
+      }
+      objDataArray.forEach((obj) => {
+        const newData = objectHasMethod(obj, "getDataObject")
+          ? obj.getDataObject()
+          : obj;
+        const validated = objectHasMethod(obj, "validate")
+          ? obj.validate()
+          : true;
+        if (newData && validated) {
+          data.push(newData);
+        }
+      });
+      // UPDATE MEMORY
+      entityDataMap[entity] = [...data];
+      // RETURN
+      return entityDataMap[entity];
+    },
     saveFor: async function (entity) {
       validateEntityForMethod(entity, "saveFor");
       try {

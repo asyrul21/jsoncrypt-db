@@ -345,4 +345,81 @@ describe("DB: Creating and Saving Data", () => {
     assert.deepStrictEqual(forceFetchedCommentsData, inMemoryCommentsData);
     DB._resetDBAndDeleteAllData();
   });
+
+  it("should create many and save them for an entity successfully", async () => {
+    let error = null;
+    let forceFetchedData;
+    let inMemoryData;
+
+    DB.registerEntity(SAMPLE_ENTITIES.categories);
+    DB.registerEntity(SAMPLE_ENTITIES.comments);
+    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
+
+    try {
+      inMemoryData = await DB.createManyNewFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA
+      );
+
+      await DB.saveFor(DB.getEntities().categories);
+      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+    } catch (e) {
+      console.log(e);
+      error = e;
+    }
+
+    assert.equal(error, null);
+    assert.deepStrictEqual(forceFetchedData, SAMPLE_CATEGORIES_DATA);
+    assert.deepStrictEqual(forceFetchedData, inMemoryData);
+    DB._resetDBAndDeleteAllData();
+  });
+
+  it("should replace all data and save them for an entity successfully", async () => {
+    let error = null;
+    let forceFetchedData;
+    let inMemoryData;
+
+    DB.registerEntity(SAMPLE_ENTITIES.categories);
+    DB.registerEntity(SAMPLE_ENTITIES.comments);
+    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
+
+    try {
+      inMemoryData = await DB.createManyNewFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA
+      );
+      await DB.saveFor(DB.getEntities().categories);
+      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+    } catch (e) {
+      console.log(e);
+      error = e;
+    }
+    assert.equal(error, null);
+    assert.deepStrictEqual(forceFetchedData, SAMPLE_CATEGORIES_DATA);
+    assert.deepStrictEqual(forceFetchedData, inMemoryData);
+
+    const REPLACED_DATA = [
+      {
+        name: "The replaced category",
+        author: "john",
+      },
+    ];
+
+    try {
+      inMemoryData = await DB.replaceAllDataFor(
+        DB.getEntities().categories,
+        REPLACED_DATA
+      );
+      await DB.saveFor(DB.getEntities().categories);
+      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+    } catch (e) {
+      console.log(e);
+      error = e;
+    }
+    assert.equal(error, null);
+    assert.deepStrictEqual(inMemoryData, REPLACED_DATA);
+    assert.deepStrictEqual(forceFetchedData, REPLACED_DATA);
+
+    DB._resetDBAndDeleteAllData();
+  });
 });
