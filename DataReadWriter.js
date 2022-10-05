@@ -14,7 +14,7 @@ const moduleFn = (function () {
   let cryptor = null;
 
   /**
-   * entities is a map of entity to their respective filenames to store data.
+   * entityFilesMap is a map of entity to their respective data path of the file to store data.
    * Example:
    *   const ENTITIES = {
    *    test: "test.json",
@@ -51,23 +51,30 @@ const moduleFn = (function () {
     );
   };
 
-  // const getDataFilePathBasedOnEntity = function (entity) {
-  //   return testMode
-  //     ? `${__dirname}/tests/data/${environment}/${entityFilesMap[entity]}`
-  //     : `${__dirname}/data/${environment}/${entityFilesMap[entity]}`;
-  // };
-
-  const createDirectoryIfNotExist = async function (filePath) {
+  const createDirectoryIfNotExist = function (filePath) {
     const fileDirectoryName = path.dirname(filePath);
     if (fs.existsSync(fileDirectoryName)) {
       return;
     }
-    fs.mkdirSync(fileDirectoryName);
+    fs.mkdirSync(fileDirectoryName, { recursive: true });
+    return;
+  };
+
+  const createFileIfNotExist = function (cryptor, filePath) {
+    if (fs.existsSync(filePath)) {
+      return;
+    }
+    const initDataStr = JSON.stringify([]);
+    const encryptedData = cryptor.encrypt(initDataStr);
+    fs.writeFileSync(filePath, encryptedData, {
+      encoding: BUFFER_ENCODING,
+    });
     return;
   };
 
   return {
-    _reset: function () {
+    _resetAndDeleteAllData: function () {
+      this._dropAllSync();
       cryptor = null;
       entityFilesMap = null;
     },
@@ -78,11 +85,13 @@ const moduleFn = (function () {
       cryptoSecret,
       vectorSecret,
       entities,
-      env = "dev",
-      isTestMode = false
+      options = {
+        env: "dev",
+        isTestMode: false,
+      }
     ) {
       if (!hasBeenInitialized()) {
-        // console.log("Not yet initialised!");
+        // console.log("Not yet initialised! Initializing now...");
         if (
           !stringHasValue(cryptoSecret) ||
           !stringHasValue(vectorSecret) ||
@@ -93,13 +102,23 @@ const moduleFn = (function () {
           );
         }
         cryptor = new Cryptor(cryptoSecret, vectorSecret);
+
+        /**
+         * Setup options
+         */
+        const { env, isTestMode } = options;
         testMode = booleanHasValue(isTestMode) ? isTestMode : false;
         environment = stringHasValue(env) ? env : "dev";
+
+        /**
+         * Build entity to file path map
+         */
         entityFilesMap = entities.reduce((prev, curr) => {
           const dataFilePath = testMode
             ? `${__dirname}/tests/data/${environment}/${curr}.json`
             : `${__dirname}/data/${environment}/${curr}.json`;
           createDirectoryIfNotExist(dataFilePath);
+          createFileIfNotExist(cryptor, dataFilePath);
           return {
             ...prev,
             [curr.toString()]: dataFilePath,
@@ -107,7 +126,7 @@ const moduleFn = (function () {
         }, {});
         return;
       }
-      //   console.log("Already initialised!");
+      // console.log("Already initialised!");
     },
     getEntityFilesMap: function () {
       return entityFilesMap;
@@ -124,12 +143,14 @@ const moduleFn = (function () {
         );
       }
       try {
-        const dataStr = fs.readFileSync(path.resolve(entityFilesMap[entity]), {
+        const dataStr = fs.readFileSync(entityFilesMap[entity], {
           encoding: BUFFER_ENCODING,
         });
         const decryptedData = cryptor.decrypt(dataStr);
         return JSON.parse(decryptedData);
       } catch (error) {
+        console.log("ERROR while readSync:");
+        console.error(error);
         throw new Error(error.message || error);
       }
     },
@@ -145,15 +166,14 @@ const moduleFn = (function () {
         );
       }
       try {
-        const dataStr = await fsPromises.readFile(
-          path.resolve(entityFilesMap[entity]),
-          {
-            encoding: BUFFER_ENCODING,
-          }
-        );
+        const dataStr = await fsPromises.readFile(entityFilesMap[entity], {
+          encoding: BUFFER_ENCODING,
+        });
         const decryptedData = cryptor.decrypt(dataStr);
         return JSON.parse(decryptedData);
       } catch (error) {
+        console.log("ERROR while readAsync:");
+        console.error(error);
         throw new Error(error.message || error);
       }
     },
@@ -171,14 +191,13 @@ const moduleFn = (function () {
       try {
         const dataStr = JSON.stringify(data);
         const encryptedData = cryptor.encrypt(dataStr);
-
-        fs.writeFileSync(path.resolve(entityFilesMap[entity]), encryptedData, {
+        fs.writeFileSync(entityFilesMap[entity], encryptedData, {
           encoding: BUFFER_ENCODING,
         });
         return data;
       } catch (error) {
-        console.log("ERROR while saveSync");
-        console.log(error);
+        console.log("ERROR while saveSync:");
+        console.error(error);
         throw new Error(error.message || error);
       }
     },
@@ -196,15 +215,13 @@ const moduleFn = (function () {
       try {
         const dataStr = JSON.stringify(data);
         const encryptedData = cryptor.encrypt(dataStr);
-        await fsPromises.writeFile(
-          path.resolve(entityFilesMap[entity]),
-          encryptedData,
-          {
-            encoding: BUFFER_ENCODING,
-          }
-        );
+        await fsPromises.writeFile(entityFilesMap[entity], encryptedData, {
+          encoding: BUFFER_ENCODING,
+        });
         return data;
       } catch (error) {
+        console.log("ERROR while saveAsync:");
+        console.error(error);
         throw new Error(error.message || error);
       }
     },
@@ -226,10 +243,12 @@ const moduleFn = (function () {
         }
         delete entityFilesMap[entity];
       } catch (error) {
+        console.log("ERROR while dropSync:");
+        console.error(error);
         throw new Error(error.message || error);
       }
     },
-    dropAllSync: function () {
+    _dropAllSync: function () {
       try {
         if (entityFilesMap) {
           Object.keys(entityFilesMap).forEach((e) => {
@@ -239,10 +258,10 @@ const moduleFn = (function () {
             }
             delete entityFilesMap[e];
           });
-          entityFilesMap = null;
         }
       } catch (error) {
-        console.log(error);
+        console.log("ERROR while dropAllSync:");
+        console.error(error);
         throw new Error(error.message || error);
       }
     },

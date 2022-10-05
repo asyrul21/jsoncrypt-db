@@ -10,4 +10,13 @@ const booleanHasValue = (val) => {
   return val === true || val === false;
 };
 
-module.exports = { stringHasValue, arrayHasValue, booleanHasValue };
+const objectHasMethod = (obj, methodName) => {
+  return obj[methodName] && typeof obj[methodName] === "function";
+};
+
+module.exports = {
+  stringHasValue,
+  arrayHasValue,
+  booleanHasValue,
+  objectHasMethod,
+};
