@@ -1,6 +1,6 @@
 const assert = require("assert");
 const fs = require("fs");
-const { DB } = require("../");
+const DataReadWriter = require("../DataReadWriter");
 
 const SAMPLE_SECRET = "sampleSecret";
 const SAMPLE_VECTOR = "sampleVector";
@@ -18,58 +18,67 @@ const getEntitiesMap = (entities, env = "dev") => {
 
 describe("Data Read Writer: Initialisation", () => {
   after(() => {
-    DB._resetAndDeleteAllData();
+    DataReadWriter._resetAndDeleteAllData();
   });
 
   it("should instantiate successfully when all valid parameters are given", () => {
     let error = null;
     try {
-      DB._resetAndDeleteAllData();
-      DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
+      DataReadWriter._resetAndDeleteAllData();
+      DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
         isTestMode: true,
       });
     } catch (e) {
       console.log(e);
       error = e;
     }
-    assert.notEqual(DB, null);
+    assert.notEqual(DataReadWriter, null);
     assert.equal(error, null);
-    assert.deepEqual(DB.getEntityFilesMap(), getEntitiesMap(SAMPLE_ENTITIES));
+    assert.deepEqual(
+      DataReadWriter.getEntityFilesMap(),
+      getEntitiesMap(SAMPLE_ENTITIES)
+    );
   });
 
   it("should instantiate successfully when module has been initialized else where", () => {
     let error = null;
     try {
-      DB.initialize();
-      DB.initialize();
+      DataReadWriter.initialize();
+      DataReadWriter.initialize();
     } catch (e) {
       console.log(e);
       error = e;
     }
-    assert.notEqual(DB, null);
+    assert.notEqual(DataReadWriter, null);
     assert.equal(error, null);
-    assert.deepEqual(DB.getEntityFilesMap(), getEntitiesMap(SAMPLE_ENTITIES));
-    assert.equal(DB.isInitialized(), true);
+    assert.deepEqual(
+      DataReadWriter.getEntityFilesMap(),
+      getEntitiesMap(SAMPLE_ENTITIES)
+    );
+    assert.equal(DataReadWriter.isInitialized(), true);
   });
 
   it("should return map data successfully when module has been initialized else where", () => {
-    assert.deepEqual(DB.getEntityFilesMap(), getEntitiesMap(SAMPLE_ENTITIES));
+    assert.deepEqual(
+      DataReadWriter.getEntityFilesMap(),
+      getEntitiesMap(SAMPLE_ENTITIES)
+    );
   });
 
   it("should throw error when crypto secret is missing", () => {
     let error = null;
     try {
-      DB._resetAndDeleteAllData();
-      DB.initialize(null, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
+      DataReadWriter._resetAndDeleteAllData();
+      DataReadWriter.initialize(null, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
         isTestMode: true,
       });
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
     }
-    DB._resetAndDeleteAllData();
+    DataReadWriter._resetAndDeleteAllData();
     assert.throws(() => {
-      DB.initialize(null, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
+      DataReadWriter.initialize(null, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
         isTestMode: true,
       });
     });
@@ -79,17 +88,17 @@ describe("Data Read Writer: Initialisation", () => {
   it("should throw error when vector secret is missing", () => {
     let error = null;
     try {
-      DB._resetAndDeleteAllData();
-      DB.initialize(SAMPLE_SECRET, null, SAMPLE_ENTITIES, {
+      DataReadWriter._resetAndDeleteAllData();
+      DataReadWriter.initialize(SAMPLE_SECRET, null, SAMPLE_ENTITIES, {
         isTestMode: true,
       });
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
     }
-    DB._resetAndDeleteAllData();
+    DataReadWriter._resetAndDeleteAllData();
     assert.throws(() => {
-      DB.initialize(SAMPLE_SECRET, null, SAMPLE_ENTITIES, {
+      DataReadWriter.initialize(SAMPLE_SECRET, null, SAMPLE_ENTITIES, {
         isTestMode: true,
       });
     });
@@ -99,17 +108,17 @@ describe("Data Read Writer: Initialisation", () => {
   it("should throw error when entites array is missing", () => {
     let error = null;
     try {
-      DB._resetAndDeleteAllData();
-      DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, null, {
+      DataReadWriter._resetAndDeleteAllData();
+      DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, null, {
         isTestMode: true,
       });
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
     }
-    DB._resetAndDeleteAllData();
+    DataReadWriter._resetAndDeleteAllData();
     assert.throws(() => {
-      DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, null, {
+      DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, null, {
         isTestMode: true,
       });
     });
@@ -119,17 +128,17 @@ describe("Data Read Writer: Initialisation", () => {
   it("should throw error when entites array has length 0", () => {
     let error = null;
     try {
-      DB._resetAndDeleteAllData();
-      DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, [], {
+      DataReadWriter._resetAndDeleteAllData();
+      DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, [], {
         isTestMode: true,
       });
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
     }
-    DB._resetAndDeleteAllData();
+    DataReadWriter._resetAndDeleteAllData();
     assert.throws(() => {
-      DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, [], {
+      DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, [], {
         isTestMode: true,
       });
     });
@@ -139,8 +148,8 @@ describe("Data Read Writer: Initialisation", () => {
 
 describe("Data Read Writer: dropping data entity stores", () => {
   beforeEach(() => {
-    DB._resetAndDeleteAllData();
-    DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
+    DataReadWriter._resetAndDeleteAllData();
+    DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
       env: "test",
       isTestMode: true,
     });
@@ -150,7 +159,7 @@ describe("Data Read Writer: dropping data entity stores", () => {
     const categoryEntity = SAMPLE_ENTITIES[0];
 
     assert.deepStrictEqual(
-      DB.getEntityFilesMap(),
+      DataReadWriter.getEntityFilesMap(),
       getEntitiesMap(SAMPLE_ENTITIES, "test")
     );
 
@@ -161,7 +170,7 @@ describe("Data Read Writer: dropping data entity stores", () => {
     let error = null;
     let fileExistsFinal = true;
     try {
-      DB.dropSync(categoryEntity);
+      DataReadWriter.dropSync(categoryEntity);
       fileExistsFinal = fs.existsSync(filePath);
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
@@ -171,7 +180,10 @@ describe("Data Read Writer: dropping data entity stores", () => {
     assert.equal(fileExistsFinal, false); // file should be removed
 
     const FINAL_ENTITY_MAP = getEntitiesMap([SAMPLE_ENTITIES[1]], "test");
-    assert.deepStrictEqual(DB.getEntityFilesMap(), FINAL_ENTITY_MAP);
+    assert.deepStrictEqual(
+      DataReadWriter.getEntityFilesMap(),
+      FINAL_ENTITY_MAP
+    );
   });
 
   it("should delete all created data storage file and set entityFilesMap to null", async () => {
@@ -179,7 +191,7 @@ describe("Data Read Writer: dropping data entity stores", () => {
     const commentsEntity = SAMPLE_ENTITIES[1];
 
     assert.deepStrictEqual(
-      DB.getEntityFilesMap(),
+      DataReadWriter.getEntityFilesMap(),
       getEntitiesMap(SAMPLE_ENTITIES, "test")
     );
 
@@ -195,7 +207,7 @@ describe("Data Read Writer: dropping data entity stores", () => {
     let error = null;
     let filesRemoved = true;
     try {
-      DB._dropAllSync();
+      DataReadWriter._dropAllSync();
       filePaths.forEach((f) => {
         const exists = fs.existsSync(f);
         if (exists) {
@@ -208,20 +220,20 @@ describe("Data Read Writer: dropping data entity stores", () => {
     }
     assert.equal(error, null);
     assert.equal(filesRemoved, true);
-    assert.deepEqual(DB.getEntityFilesMap(), {});
+    assert.deepEqual(DataReadWriter.getEntityFilesMap(), {});
   });
 });
 
 describe("Data Read Writer: Synchronized Data Writing", () => {
   before(() => {
-    DB._resetAndDeleteAllData();
-    DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
+    DataReadWriter._resetAndDeleteAllData();
+    DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
       isTestMode: true,
     });
   });
 
   after(() => {
-    DB._resetAndDeleteAllData();
+    DataReadWriter._resetAndDeleteAllData();
   });
 
   it("should write data to file successfully", () => {
@@ -231,7 +243,7 @@ describe("Data Read Writer: Synchronized Data Writing", () => {
     let error = null;
     let fileExists = false;
     try {
-      DB.saveSync(categoryEntity, { name: "sampleCategory" });
+      DataReadWriter.saveSync(categoryEntity, { name: "sampleCategory" });
       // should create file in root/data/dev/category.json
       fileExists = fs.existsSync(filePath);
     } catch (e) {
@@ -249,14 +261,14 @@ describe("Data Read Writer: Synchronized Data Writing", () => {
     let error = null;
     let fileExists = false;
     try {
-      DB.saveSync(invalidEntity, { name: "sampleData" });
+      DataReadWriter.saveSync(invalidEntity, { name: "sampleData" });
       fileExists = fs.existsSync(filePath);
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
     }
     assert.throws(() => {
-      DB.saveSync(invalidEntity, { name: "sampleData" });
+      DataReadWriter.saveSync(invalidEntity, { name: "sampleData" });
     });
     assert.notEqual(error, null);
     assert.equal(fileExists, false);
@@ -268,33 +280,33 @@ describe("Data Read Writer: Synchronized Data Writing", () => {
     let error = null;
     let fileExists = false;
     try {
-      DB.saveSync(invalidEntity, { name: "sampleData" });
+      DataReadWriter.saveSync(invalidEntity, { name: "sampleData" });
       fileExists = fs.existsSync(filePath);
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
     }
     assert.throws(() => {
-      DB.saveSync(invalidEntity, { name: "sampleData" });
+      DataReadWriter.saveSync(invalidEntity, { name: "sampleData" });
     });
     assert.notEqual(error, null);
     assert.equal(fileExists, false);
   });
 
-  it("should throw error when DB was not initialized", () => {
+  it("should throw error when DataReadWriter was not initialized", () => {
     const sampleEntity = SAMPLE_ENTITIES[0];
     const filePath = `tests/data/dev/${sampleEntity}.json`;
     let error = null;
     try {
-      DB._resetAndDeleteAllData();
-      DB.saveSync(sampleEntity, { name: "sampleData" });
+      DataReadWriter._resetAndDeleteAllData();
+      DataReadWriter.saveSync(sampleEntity, { name: "sampleData" });
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
     }
     assert.throws(() => {
-      DB._resetAndDeleteAllData();
-      DB.saveSync(sampleEntity, { name: "sampleData" });
+      DataReadWriter._resetAndDeleteAllData();
+      DataReadWriter.saveSync(sampleEntity, { name: "sampleData" });
     });
     assert.notEqual(error, null);
   });
@@ -302,14 +314,14 @@ describe("Data Read Writer: Synchronized Data Writing", () => {
 
 describe("Data Read Writer: Asynchronous Data Writing", () => {
   before(() => {
-    DB._resetAndDeleteAllData();
-    DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
+    DataReadWriter._resetAndDeleteAllData();
+    DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
       isTestMode: true,
     });
   });
 
   after(() => {
-    DB._resetAndDeleteAllData();
+    DataReadWriter._resetAndDeleteAllData();
   });
 
   it("should write data to file successfully", async () => {
@@ -318,7 +330,9 @@ describe("Data Read Writer: Asynchronous Data Writing", () => {
     let error = null;
     let fileExists = false;
     try {
-      await DB.saveAsync(categoryEntity, { name: "sampleCategory" });
+      await DataReadWriter.saveAsync(categoryEntity, {
+        name: "sampleCategory",
+      });
       fileExists = fs.existsSync(filePath);
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
@@ -329,13 +343,13 @@ describe("Data Read Writer: Asynchronous Data Writing", () => {
     fs.unlinkSync(filePath);
   });
 
-  it("should throw error when DB was not initialized", async () => {
+  it("should throw error when DataReadWriter was not initialized", async () => {
     const sampleEntity = SAMPLE_ENTITIES[0];
     const filePath = `tests/data/dev/${sampleEntity}.json`;
     let error = null;
     try {
-      DB._resetAndDeleteAllData();
-      await DB.saveAsync(sampleEntity, { name: "sampleData" });
+      DataReadWriter._resetAndDeleteAllData();
+      await DataReadWriter.saveAsync(sampleEntity, { name: "sampleData" });
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
@@ -346,14 +360,14 @@ describe("Data Read Writer: Asynchronous Data Writing", () => {
 
 describe("Data Read Writer: Synchronized Data Reading", () => {
   before(() => {
-    DB._resetAndDeleteAllData();
-    DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
+    DataReadWriter._resetAndDeleteAllData();
+    DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
       isTestMode: true,
     });
   });
 
   after(() => {
-    DB._resetAndDeleteAllData();
+    DataReadWriter._resetAndDeleteAllData();
   });
 
   it("should read data from file successfully", () => {
@@ -368,9 +382,9 @@ describe("Data Read Writer: Synchronized Data Reading", () => {
     let error = null;
     let readData;
     try {
-      DB.saveSync(categoryEntity, sampleCategoryData);
+      DataReadWriter.saveSync(categoryEntity, sampleCategoryData);
       // attempt to read data
-      readData = DB.readSync(categoryEntity);
+      readData = DataReadWriter.readSync(categoryEntity);
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
@@ -380,14 +394,14 @@ describe("Data Read Writer: Synchronized Data Reading", () => {
     fs.unlinkSync(filePath);
   });
 
-  it("should throw error when DB was not initialized", () => {
+  it("should throw error when DataReadWriter was not initialized", () => {
     let readData;
     const sampleEntity = SAMPLE_ENTITIES[0];
     const filePath = `tests/data/dev/${sampleEntity}.json`;
     let error = null;
     try {
-      DB._resetAndDeleteAllData();
-      readData = DB.readSync(sampleEntity, { name: "sampleData" });
+      DataReadWriter._resetAndDeleteAllData();
+      readData = DataReadWriter.readSync(sampleEntity, { name: "sampleData" });
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
@@ -398,14 +412,14 @@ describe("Data Read Writer: Synchronized Data Reading", () => {
 
 describe("Data Read Writer: Asynchronous Data Reading", () => {
   before(() => {
-    DB._resetAndDeleteAllData();
-    DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
+    DataReadWriter._resetAndDeleteAllData();
+    DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
       isTestMode: true,
     });
   });
 
   after(() => {
-    DB._resetAndDeleteAllData();
+    DataReadWriter._resetAndDeleteAllData();
   });
 
   it("should write data to file successfully", async () => {
@@ -420,9 +434,9 @@ describe("Data Read Writer: Asynchronous Data Reading", () => {
     let error = null;
     let readData;
     try {
-      DB.saveSync(categoryEntity, sampleCategoryData);
+      DataReadWriter.saveSync(categoryEntity, sampleCategoryData);
       // attempt to read data
-      readData = await DB.readAsync(categoryEntity);
+      readData = await DataReadWriter.readAsync(categoryEntity);
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
@@ -432,14 +446,16 @@ describe("Data Read Writer: Asynchronous Data Reading", () => {
     fs.unlinkSync(filePath);
   });
 
-  it("should throw error when DB was not initialized", async () => {
+  it("should throw error when DataReadWriter was not initialized", async () => {
     let readData;
     const sampleEntity = SAMPLE_ENTITIES[0];
     const filePath = `tests/data/dev/${sampleEntity}.json`;
     let error = null;
     try {
-      DB._resetAndDeleteAllData();
-      readData = await DB.readAsync(sampleEntity, { name: "sampleData" });
+      DataReadWriter._resetAndDeleteAllData();
+      readData = await DataReadWriter.readAsync(sampleEntity, {
+        name: "sampleData",
+      });
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;
@@ -450,15 +466,15 @@ describe("Data Read Writer: Asynchronous Data Reading", () => {
 
 describe("Data Read Writer: Reading and writing in different environments", () => {
   before(() => {
-    DB._resetAndDeleteAllData();
-    DB.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
+    DataReadWriter._resetAndDeleteAllData();
+    DataReadWriter.initialize(SAMPLE_SECRET, SAMPLE_VECTOR, SAMPLE_ENTITIES, {
       env: "prod",
       isTestMode: true,
     });
   });
 
   after(() => {
-    DB._resetAndDeleteAllData();
+    DataReadWriter._resetAndDeleteAllData();
   });
 
   it("should write and read data successfully in prod environment", async () => {
@@ -473,9 +489,9 @@ describe("Data Read Writer: Reading and writing in different environments", () =
     let readData;
     let fileExists;
     try {
-      DB.saveSync(categoryEntity, sampleCategoryData);
+      DataReadWriter.saveSync(categoryEntity, sampleCategoryData);
       fileExists = fs.existsSync(filePath);
-      readData = await DB.readAsync(categoryEntity);
+      readData = await DataReadWriter.readAsync(categoryEntity);
     } catch (e) {
       console.log(`ERROR: ${e.message || e}`);
       error = e;

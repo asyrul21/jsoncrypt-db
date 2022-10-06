@@ -1,4 +1,3 @@
 module.exports = {
-  DB: require("./DataReadWriter"),
-  AbstractDataModel: require("./AbstractDataModel"),
+  DB: require("./DB"),
 };

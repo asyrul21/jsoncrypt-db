@@ -421,55 +421,6 @@ describe("DB: Creating, findAllFor, and Saving Data", () => {
     );
     DB._resetDBAndDeleteAllData();
   });
-
-  //   it("should replace all data and save them for an entity successfully", async () => {
-  //     let error = null;
-  //     let forceFetchedData;
-  //     let inMemoryData;
-
-  //     DB.registerEntity(SAMPLE_ENTITIES.categories);
-  //     DB.registerEntity(SAMPLE_ENTITIES.comments);
-  //     DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
-
-  //     try {
-  //       inMemoryData = await DB.createManyNewFor(
-  //         DB.getEntities().categories,
-  //         SAMPLE_CATEGORIES_DATA
-  //       );
-  //       await DB.saveFor(DB.getEntities().categories);
-  //       forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
-  //     } catch (e) {
-  //       console.log(e);
-  //       error = e;
-  //     }
-  //     assert.equal(error, null);
-  //     assert.deepStrictEqual(forceFetchedData, SAMPLE_CATEGORIES_DATA);
-  //     assert.deepStrictEqual(forceFetchedData, inMemoryData);
-
-  //     const REPLACED_DATA = [
-  //       {
-  //         name: "The replaced category",
-  //         author: "john",
-  //       },
-  //     ];
-
-  //     try {
-  //       inMemoryData = await DB.replaceAllDataFor(
-  //         DB.getEntities().categories,
-  //         REPLACED_DATA
-  //       );
-  //       await DB.saveFor(DB.getEntities().categories);
-  //       forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
-  //     } catch (e) {
-  //       console.log(e);
-  //       error = e;
-  //     }
-  //     assert.equal(error, null);
-  //     assert.deepStrictEqual(inMemoryData, REPLACED_DATA);
-  //     assert.deepStrictEqual(forceFetchedData, REPLACED_DATA);
-
-  //     DB._resetDBAndDeleteAllData();
-  //   });
 });
 
 describe("DB: Retrieving and Saving Data", () => {
@@ -507,42 +458,212 @@ describe("DB: Retrieving and Saving Data", () => {
     );
     DB._resetDBAndDeleteAllData();
   });
+});
 
-  it("should retrieve data by identifier successfully using the identifierKey hook", async () => {
+describe("DB: Updating and Saving Data", () => {
+  beforeEach(() => {
+    DB._resetDBAndDeleteAllData();
+  });
+
+  it("should update and save data for entity successfully", async () => {
+    let error = null;
+    let forceFetchedData;
+    let inMemoryData;
+
+    let sampleData1 = { ...SAMPLE_CATEGORIES_DATA[0] };
+    sampleData1.name = "Updated Category Name";
+    sampleData1.description = "This category has been updated";
+
+    const UPDATED_SAMPLE_DATA = [
+      { ...sampleData1 },
+      { ...SAMPLE_CATEGORIES_DATA[1] },
+      { ...SAMPLE_CATEGORIES_DATA[2] },
+    ];
+
+    DB.registerEntity(SAMPLE_ENTITIES.categories);
+    DB.registerEntity(SAMPLE_ENTITIES.comments);
+    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
+
+    try {
+      await DB.createManyNewFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA
+      );
+      await DB.saveFor(DB.getEntities().categories);
+
+      inMemoryData = await DB.updateFor(
+        DB.getEntities().categories,
+        sampleData1.id,
+        sampleData1
+      );
+      await DB.saveFor(DB.getEntities().categories);
+
+      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+    } catch (e) {
+      console.log(e);
+      error = e;
+    }
+
+    assert.equal(error, null);
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedData),
+      transformDataArrayWithMockDates(UPDATED_SAMPLE_DATA)
+    );
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedData),
+      transformDataArrayWithMockDates(inMemoryData)
+    );
+    DB._resetDBAndDeleteAllData();
+  });
+});
+
+describe("DB: Deleting and Saving Data", () => {
+  beforeEach(() => {
+    DB._resetDBAndDeleteAllData();
+  });
+
+  it("should update and save data for entity successfully", async () => {
+    let error = null;
+    let forceFetchedData;
+    let inMemoryData;
+
+    const UPDATED_SAMPLE_DATA = [
+      { ...SAMPLE_CATEGORIES_DATA[0] },
+      { ...SAMPLE_CATEGORIES_DATA[2] },
+    ];
+
+    DB.registerEntity(SAMPLE_ENTITIES.categories);
+    DB.registerEntity(SAMPLE_ENTITIES.comments);
+    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
+
+    try {
+      await DB.createManyNewFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA
+      );
+      await DB.saveFor(DB.getEntities().categories);
+
+      inMemoryData = await DB.deleteFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA[1].id
+      );
+      await DB.saveFor(DB.getEntities().categories);
+
+      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+    } catch (e) {
+      console.log(e);
+      error = e;
+    }
+
+    assert.equal(error, null);
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedData),
+      transformDataArrayWithMockDates(UPDATED_SAMPLE_DATA)
+    );
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedData),
+      transformDataArrayWithMockDates(inMemoryData)
+    );
+    DB._resetDBAndDeleteAllData();
+  });
+});
+
+describe("DB: Entity Option Hooks", () => {
+  beforeEach(() => {
+    DB._resetDBAndDeleteAllData();
+  });
+
+  it("should fail validation when hook:validateOnCreate is used", async () => {
+    let validateFalseError = null;
+
+    DB.registerEntity(SAMPLE_ENTITIES.categories, {
+      validateOnCreate: (dataObj) => {
+        return false;
+      },
+    });
+    DB.registerEntity(SAMPLE_ENTITIES.comments);
+    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
+    try {
+      // should throw error
+      await DB.createNewFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA[0]
+      );
+    } catch (e) {
+      console.log(e.message || e);
+      validateFalseError = e;
+    }
+    assert.notEqual(validateFalseError, null);
+  });
+
+  it("should utilise hook:validateOnCreate and pass validation to create data successfully", async () => {
+    const sampleData = SAMPLE_CATEGORIES_DATA[0];
+    // validate should pass
+    let inMemoryData;
+    let validateTrueError = null;
+    let forceFetchedData;
+
+    DB.registerEntity(SAMPLE_ENTITIES.categories, {
+      validateOnCreate: (dataObj) => {
+        return true;
+      },
+    });
+    DB.registerEntity(SAMPLE_ENTITIES.comments);
+    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
+    try {
+      inMemoryData = await DB.createNewFor(
+        DB.getEntities().categories,
+        sampleData
+      );
+      // save
+      await DB.saveFor(DB.getEntities().categories);
+      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+    } catch (e) {
+      console.log(e);
+      validateTrueError = e;
+    }
+
+    assert.equal(validateTrueError, null);
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedData),
+      transformDataArrayWithMockDates([sampleData])
+    );
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedData),
+      transformDataArrayWithMockDates(inMemoryData)
+    );
+  });
+
+  it("should retrieve data by identifier successfully using the hook:identifierKey", async () => {
     const SAMPLE_CATEGORIES_DATA_ALT = [
       {
         key: "123",
         name: "category 1",
         description: "sample category 1 description",
-        identifierKey: function () {
-          return "key";
-        },
       },
       {
         key: "456",
         name: "category 2",
         description: "sample category 2 description",
-        identifierKey: () => {
-          return "key";
-        },
       },
       {
         key: "789",
         name: "category 2",
         description: "sample category 2 description",
-        identifierKey: function () {
-          return "key";
-        },
       },
     ];
 
     let error = null;
     let result = null;
-    DB.registerEntity(SAMPLE_ENTITIES.categories);
+    let inMemory;
+    let forcedFetchedData;
+    DB.registerEntity(SAMPLE_ENTITIES.categories, {
+      identifierKey: "key",
+    });
     DB.registerEntity(SAMPLE_ENTITIES.comments);
     DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
     try {
-      await DB.createManyNewFor(
+      inMemory = await DB.createManyNewFor(
         DB.getEntities().categories,
         SAMPLE_CATEGORIES_DATA_ALT
       );
@@ -551,7 +672,12 @@ describe("DB: Retrieving and Saving Data", () => {
       // retrieve
       result = await DB.findByIdentifierFor(
         DB.getEntities().categories,
-        SAMPLE_CATEGORIES_DATA_ALT[2].key
+        SAMPLE_CATEGORIES_DATA_ALT[2].key,
+        true
+      );
+      forcedFetchedData = await DB.findAllFor(
+        DB.getEntities().categories,
+        true
       );
     } catch (e) {
       console.log(e);
@@ -563,63 +689,9 @@ describe("DB: Retrieving and Saving Data", () => {
       transformDataObjectWithMockDates(result),
       transformDataObjectWithMockDates(SAMPLE_CATEGORIES_DATA_ALT[2])
     );
-    DB._resetDBAndDeleteAllData();
-  });
-
-  it("should retrieve data by identifier successfully using the identifierKey hook as arrow function", async () => {
-    const SAMPLE_CATEGORIES_DATA_ALT = [
-      {
-        key: "123",
-        name: "category 1",
-        description: "sample category 1 description",
-        identifierKey: () => {
-          return "key";
-        },
-      },
-      {
-        key: "456",
-        name: "category 2",
-        description: "sample category 2 description",
-        identifierKey: () => {
-          return "key";
-        },
-      },
-      {
-        key: "789",
-        name: "category 2",
-        description: "sample category 2 description",
-        identifierKey: function () {
-          return "key";
-        },
-      },
-    ];
-
-    let error = null;
-    let result = null;
-    DB.registerEntity(SAMPLE_ENTITIES.categories);
-    DB.registerEntity(SAMPLE_ENTITIES.comments);
-    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
-    try {
-      await DB.createManyNewFor(
-        DB.getEntities().categories,
-        SAMPLE_CATEGORIES_DATA_ALT
-      );
-      await DB.saveFor(DB.getEntities().categories);
-
-      // retrieve
-      result = await DB.findByIdentifierFor(
-        DB.getEntities().categories,
-        SAMPLE_CATEGORIES_DATA_ALT[2].key
-      );
-    } catch (e) {
-      console.log(e);
-      error = e;
-    }
-
-    assert.equal(error, null);
     assert.deepStrictEqual(
-      transformDataObjectWithMockDates(result),
-      transformDataObjectWithMockDates(SAMPLE_CATEGORIES_DATA_ALT[2])
+      transformDataArrayWithMockDates(forcedFetchedData),
+      transformDataArrayWithMockDates(inMemory)
     );
     DB._resetDBAndDeleteAllData();
   });

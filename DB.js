@@ -8,8 +8,23 @@ const moduleFn = (function () {
    *
    * eg.
    * {
-   *    categories: "categories",
-   *    comments: "comments"
+   *    categories: {
+   *        name: "categories",
+   *        options: {
+   *            identifierKey: "id",
+   *            validateOnCreate: (dataObj) => {
+   *                return true;
+   *            },
+   *        }
+   *    },
+   *    comments: {
+   *        name: "comments",
+   *        options: {
+   *            identifierKey: "id",
+   *            validateOnCreate: (dataObj) => {
+   *                return true;
+   *        }
+   *    }
    * }
    */
   let entities = {};
@@ -20,8 +35,8 @@ const moduleFn = (function () {
    *
    * eg.
    * {
-   *    categories: "categories",
-   *    comments: "comments"
+   *    categories: [ ... data ...],
+   *    comments: [ ...data... ]
    * }
    */
   let entityDataMap = {};
@@ -48,6 +63,16 @@ const moduleFn = (function () {
     }
   };
 
+  const validateDataObjectForEntity = (entity, obj) => {
+    if (!obj) {
+      return false;
+    }
+    const entityOptions = entities[entity].options;
+    return objectHasMethod(entityOptions, "validateOnCreate")
+      ? entityOptions.validateOnCreate(obj)
+      : true;
+  };
+
   const enrichDataWithDBProps = (obj) => {
     return {
       ...obj,
@@ -71,12 +96,29 @@ const moduleFn = (function () {
       }
     },
     getEntities: function () {
-      return entities;
+      let result = {};
+      if (entities && Object.keys(entities).length > 0) {
+        result = Object.keys(entities).reduce((acc, curr) => {
+          return {
+            ...acc,
+            [curr]: entities[curr].name,
+          };
+        }, {});
+      }
+      return result;
     },
     isUp: function () {
       return isRunning();
     },
-    registerEntity: function (entity) {
+    registerEntity: function (
+      entity,
+      options = {
+        identifierKey: "id",
+        validateOnCreate: (dataObj) => {
+          return true;
+        },
+      }
+    ) {
       if (this.isUp()) {
         throw new Error(
           "Can't add entities once DB is built. Please add them before building."
@@ -88,7 +130,13 @@ const moduleFn = (function () {
         );
       }
       if (entities && !Object.keys(entities).includes(entity)) {
-        entities = { ...entities, [entity]: entity };
+        entities = {
+          ...entities,
+          [entity]: {
+            name: entity,
+            options,
+          },
+        };
       }
     },
     removeEntityAndDeleteEntityData: function (entity) {
@@ -176,9 +224,11 @@ const moduleFn = (function () {
         data = await DataReadWriter.readAsync(entity);
       }
       if (data.length > 0) {
-        const objIdentifierKey = objectHasMethod(data[0], "identifierKey")
-          ? data[0].identifierKey()
+        const entityOptions = entities[entity].options;
+        const objIdentifierKey = entityOptions.identifierKey
+          ? entityOptions.identifierKey
           : "id";
+
         const foundItems = data.filter((item) => item[objIdentifierKey] === id);
         if (foundItems.length > 0) {
           return foundItems[0];
@@ -191,13 +241,8 @@ const moduleFn = (function () {
     },
     createNewFor: async function (entity, obj) {
       validateEntityForMethod(entity, "createNewFor");
-      const newData = objectHasMethod(obj, "getDataObject")
-        ? obj.getDataObject()
-        : obj;
-      const validated = objectHasMethod(obj, "validate")
-        ? obj.validate()
-        : true;
-      if (newData && validated) {
+      const validated = validateDataObjectForEntity(entity, obj);
+      if (validated) {
         let data;
         if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
           // CHECK data exist in memory
@@ -206,19 +251,19 @@ const moduleFn = (function () {
           // FETCH
           data = await DataReadWriter.readAsync(entity);
         }
-        data.push(enrichDataWithDBProps(newData));
+        data.push(enrichDataWithDBProps(obj));
         // UPDATE MEMORY
         entityDataMap[entity] = [...data];
         // RETURN
         return entityDataMap[entity];
       } else {
-        throw new Error("Invalid or no data to be created.");
+        throw new Error("Invalid or no data to create.");
       }
     },
     createManyNewFor: async function (entity, objDataArray) {
       validateEntityForMethod(entity, "createNewFor");
       if (!objDataArray || objDataArray.length < 1) {
-        return (entityDataMap[entity] = [...data]);
+        throw new Error("No data to create.");
       }
       let data;
       if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
@@ -227,20 +272,93 @@ const moduleFn = (function () {
         data = await DataReadWriter.readAsync(entity);
       }
       objDataArray.forEach((obj) => {
-        const newData = objectHasMethod(obj, "getDataObject")
-          ? obj.getDataObject()
-          : obj;
-        const validated = objectHasMethod(obj, "validate")
-          ? obj.validate()
-          : true;
-        if (newData && validated) {
-          data.push(enrichDataWithDBProps(newData));
+        const validated = validateDataObjectForEntity(entity, obj);
+        if (obj && validated) {
+          data.push(enrichDataWithDBProps(obj));
         }
       });
       // UPDATE MEMORY
       entityDataMap[entity] = [...data];
       // RETURN
       return entityDataMap[entity];
+    },
+    updateFor: async function (entity, id, newData) {
+      validateEntityForMethod(entity, "updateFor");
+      if (!id || !newData) {
+        throw new Error(
+          "Arguments [id] and [newData] must be provided in method [updateFor]."
+        );
+      }
+      let data;
+      if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
+        data = entityDataMap[entity];
+      } else {
+        data = await DataReadWriter.readAsync(entity);
+      }
+      if (data.length > 0) {
+        const entityOptions = entities[entity].options;
+        const objIdentifierKey = entityOptions.identifierKey
+          ? entityOptions.identifierKey
+          : "id";
+        const foundItems = data.filter((item) => item[objIdentifierKey] === id);
+        if (foundItems.length > 0) {
+          let updatedData = foundItems[0];
+          Object.keys(newData).forEach((k) => {
+            // prevent updating id value
+            if (k !== objIdentifierKey) {
+              updatedData[k] = newData[k];
+            }
+          });
+          const validated = validateDataObjectForEntity(entity, updatedData);
+          if (validated) {
+            data.forEach((item) => {
+              if (item[objIdentifierKey] === id) {
+                item = { ...updatedData };
+              }
+            });
+            // UPDATE MEMORY
+            entityDataMap[entity] = [...data];
+            // RETURN
+            return entityDataMap[entity];
+          } else {
+            throw new Error("Updated values for data failed validation.");
+          }
+        } else {
+          throw new Error("Invalid or no data with given identifier.");
+        }
+      } else {
+        throw new Error(`DB for entity [${entity}] has no data.`);
+      }
+    },
+    deleteFor: async function (entity, id) {
+      validateEntityForMethod(entity, "deleteFor");
+      if (!id) {
+        throw new Error(
+          "Argument [id] must be provided in method [updateFor]."
+        );
+      }
+      let data;
+      if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
+        data = entityDataMap[entity];
+      } else {
+        data = await DataReadWriter.readAsync(entity);
+      }
+      if (data.length > 0) {
+        const entityOptions = entities[entity].options;
+        const objIdentifierKey = entityOptions.identifierKey
+          ? entityOptions.identifierKey
+          : "id";
+
+        const updatedData = data.filter(
+          (item) => item[objIdentifierKey] !== id
+        );
+        // UPDATE MEMORY
+        entityDataMap[entity] = [...updatedData];
+        // RETURN
+        return entityDataMap[entity];
+      } else {
+        throw new Error(`DB for entity [${entity}] has no data.`);
+      }
     },
     saveFor: async function (entity) {
       validateEntityForMethod(entity, "saveFor");
