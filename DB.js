@@ -48,6 +48,20 @@ const moduleFn = (function () {
     }
   };
 
+  const enrichDataWithDBProps = (obj) => {
+    return {
+      ...obj,
+      createdAt: (function () {
+        const d = new Date();
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      })(),
+      updatedAt: (function () {
+        const d = new Date();
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      })(),
+    };
+  };
+
   return {
     _resetDBAndDeleteAllData: function () {
       entities = {};
@@ -63,6 +77,11 @@ const moduleFn = (function () {
       return isRunning();
     },
     registerEntity: function (entity) {
+      if (this.isUp()) {
+        throw new Error(
+          "Can't add entities once DB is built. Please add them before building."
+        );
+      }
       if (!entity || typeof entity !== "string") {
         throw new Error(
           "Invalid parameter [entity] provided for function [registerEntity]."
@@ -121,7 +140,7 @@ const moduleFn = (function () {
         }
         console.log("SIMPLE DB BUILD SUCCESS!");
       } catch (error) {
-        console.log("ERROR while initializing DataReadWriter:");
+        console.log("ERROR while building DB:");
         console.error(error);
         throw new Error(error.message || error);
       }
@@ -148,6 +167,28 @@ const moduleFn = (function () {
         return entityDataMap[entity];
       }
     },
+    findByIdentifierFor: async function (entity, id) {
+      validateEntityForMethod(entity, "findByIdentifierFor");
+      let data;
+      if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
+        data = entityDataMap[entity];
+      } else {
+        data = await DataReadWriter.readAsync(entity);
+      }
+      if (data.length > 0) {
+        const objIdentifierKey = objectHasMethod(data[0], "identifierKey")
+          ? data[0].identifierKey()
+          : "id";
+        const foundItems = data.filter((item) => item[objIdentifierKey] === id);
+        if (foundItems.length > 0) {
+          return foundItems[0];
+        } else {
+          throw new Error("Invalid or no data with given identifier.");
+        }
+      } else {
+        throw new Error(`DB for entity [${entity}] has no data.`);
+      }
+    },
     createNewFor: async function (entity, obj) {
       validateEntityForMethod(entity, "createNewFor");
       const newData = objectHasMethod(obj, "getDataObject")
@@ -165,7 +206,7 @@ const moduleFn = (function () {
           // FETCH
           data = await DataReadWriter.readAsync(entity);
         }
-        data.push(newData);
+        data.push(enrichDataWithDBProps(newData));
         // UPDATE MEMORY
         entityDataMap[entity] = [...data];
         // RETURN
@@ -193,7 +234,7 @@ const moduleFn = (function () {
           ? obj.validate()
           : true;
         if (newData && validated) {
-          data.push(newData);
+          data.push(enrichDataWithDBProps(newData));
         }
       });
       // UPDATE MEMORY

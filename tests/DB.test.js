@@ -40,6 +40,24 @@ const SAMPLE_COMMENTS_DATA = [
   },
 ];
 
+const transformDataArrayWithMockDates = (dataArr) => {
+  return dataArr.map((d) => {
+    return {
+      ...d,
+      createdAt: new Date(2020, 0, 2),
+      updatedAt: new Date(2020, 0, 2),
+    };
+  });
+};
+
+const transformDataObjectWithMockDates = (dataObj) => {
+  return {
+    ...dataObj,
+    createdAt: new Date(2020, 0, 2),
+    updatedAt: new Date(2020, 0, 2),
+  };
+};
+
 describe("DB: Registering entities", () => {
   afterEach(() => {
     DB._resetDBAndDeleteAllData();
@@ -200,7 +218,7 @@ describe("DB: Building", () => {
   });
 });
 
-describe("DB: Creating and Saving Data", () => {
+describe("DB: Creating, findAllFor, and Saving Data", () => {
   beforeEach(() => {
     DB._resetDBAndDeleteAllData();
   });
@@ -218,9 +236,11 @@ describe("DB: Creating and Saving Data", () => {
       console.log(e);
       error = e;
     }
-    // console.log(data);
+
     assert.equal(error, null);
-    assert.deepStrictEqual(data, [sampleData]);
+    assert.deepStrictEqual(transformDataArrayWithMockDates(data), [
+      transformDataObjectWithMockDates(sampleData),
+    ]);
     DB._resetDBAndDeleteAllData();
   });
 
@@ -252,7 +272,10 @@ describe("DB: Creating and Saving Data", () => {
 
     assert.equal(error, null);
     assert.deepStrictEqual(forceFetchedData, []); // should still be empty
-    assert.deepStrictEqual(inMemoryData, SAMPLE_CATEGORIES_DATA);
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(inMemoryData),
+      transformDataArrayWithMockDates(SAMPLE_CATEGORIES_DATA)
+    );
     DB._resetDBAndDeleteAllData();
   });
 
@@ -283,10 +306,17 @@ describe("DB: Creating and Saving Data", () => {
       console.log(e);
       error = e;
     }
+    // console.log("forcedFetched");
     // console.log(forceFetchedData);
     assert.equal(error, null);
-    assert.deepStrictEqual(forceFetchedData, SAMPLE_CATEGORIES_DATA);
-    assert.deepStrictEqual(forceFetchedData, inMemoryData);
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedData),
+      transformDataArrayWithMockDates(SAMPLE_CATEGORIES_DATA)
+    );
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedData),
+      transformDataArrayWithMockDates(inMemoryData)
+    );
     DB._resetDBAndDeleteAllData();
   });
 
@@ -338,11 +368,23 @@ describe("DB: Creating and Saving Data", () => {
     }
 
     assert.equal(error, null);
-    assert.deepStrictEqual(forceFetchedCategoriesData, SAMPLE_CATEGORIES_DATA);
-    assert.deepStrictEqual(forceFetchedCategoriesData, inMemoryCategoriesData);
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedCategoriesData),
+      transformDataArrayWithMockDates(SAMPLE_CATEGORIES_DATA)
+    );
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedCategoriesData),
+      transformDataArrayWithMockDates(inMemoryCategoriesData)
+    );
 
-    assert.deepStrictEqual(forceFetchedCommentsData, SAMPLE_COMMENTS_DATA);
-    assert.deepStrictEqual(forceFetchedCommentsData, inMemoryCommentsData);
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedCommentsData),
+      transformDataArrayWithMockDates(SAMPLE_COMMENTS_DATA)
+    );
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedCommentsData),
+      transformDataArrayWithMockDates(inMemoryCommentsData)
+    );
     DB._resetDBAndDeleteAllData();
   });
 
@@ -369,57 +411,216 @@ describe("DB: Creating and Saving Data", () => {
     }
 
     assert.equal(error, null);
-    assert.deepStrictEqual(forceFetchedData, SAMPLE_CATEGORIES_DATA);
-    assert.deepStrictEqual(forceFetchedData, inMemoryData);
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedData),
+      transformDataArrayWithMockDates(SAMPLE_CATEGORIES_DATA)
+    );
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forceFetchedData),
+      transformDataArrayWithMockDates(inMemoryData)
+    );
     DB._resetDBAndDeleteAllData();
   });
 
-  it("should replace all data and save them for an entity successfully", async () => {
-    let error = null;
-    let forceFetchedData;
-    let inMemoryData;
+  //   it("should replace all data and save them for an entity successfully", async () => {
+  //     let error = null;
+  //     let forceFetchedData;
+  //     let inMemoryData;
 
+  //     DB.registerEntity(SAMPLE_ENTITIES.categories);
+  //     DB.registerEntity(SAMPLE_ENTITIES.comments);
+  //     DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
+
+  //     try {
+  //       inMemoryData = await DB.createManyNewFor(
+  //         DB.getEntities().categories,
+  //         SAMPLE_CATEGORIES_DATA
+  //       );
+  //       await DB.saveFor(DB.getEntities().categories);
+  //       forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+  //     } catch (e) {
+  //       console.log(e);
+  //       error = e;
+  //     }
+  //     assert.equal(error, null);
+  //     assert.deepStrictEqual(forceFetchedData, SAMPLE_CATEGORIES_DATA);
+  //     assert.deepStrictEqual(forceFetchedData, inMemoryData);
+
+  //     const REPLACED_DATA = [
+  //       {
+  //         name: "The replaced category",
+  //         author: "john",
+  //       },
+  //     ];
+
+  //     try {
+  //       inMemoryData = await DB.replaceAllDataFor(
+  //         DB.getEntities().categories,
+  //         REPLACED_DATA
+  //       );
+  //       await DB.saveFor(DB.getEntities().categories);
+  //       forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+  //     } catch (e) {
+  //       console.log(e);
+  //       error = e;
+  //     }
+  //     assert.equal(error, null);
+  //     assert.deepStrictEqual(inMemoryData, REPLACED_DATA);
+  //     assert.deepStrictEqual(forceFetchedData, REPLACED_DATA);
+
+  //     DB._resetDBAndDeleteAllData();
+  //   });
+});
+
+describe("DB: Retrieving and Saving Data", () => {
+  beforeEach(() => {
+    DB._resetDBAndDeleteAllData();
+  });
+
+  it("should retrieve data by identifier successfully", async () => {
+    let error = null;
+    let result = null;
     DB.registerEntity(SAMPLE_ENTITIES.categories);
     DB.registerEntity(SAMPLE_ENTITIES.comments);
     DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
-
     try {
-      inMemoryData = await DB.createManyNewFor(
+      await DB.createManyNewFor(
         DB.getEntities().categories,
         SAMPLE_CATEGORIES_DATA
       );
       await DB.saveFor(DB.getEntities().categories);
-      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+
+      // retrieve
+      result = await DB.findByIdentifierFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA[2].id
+      );
     } catch (e) {
       console.log(e);
       error = e;
     }
-    assert.equal(error, null);
-    assert.deepStrictEqual(forceFetchedData, SAMPLE_CATEGORIES_DATA);
-    assert.deepStrictEqual(forceFetchedData, inMemoryData);
 
-    const REPLACED_DATA = [
+    assert.equal(error, null);
+    assert.deepStrictEqual(
+      transformDataObjectWithMockDates(result),
+      transformDataObjectWithMockDates(SAMPLE_CATEGORIES_DATA[2])
+    );
+    DB._resetDBAndDeleteAllData();
+  });
+
+  it("should retrieve data by identifier successfully using the identifierKey hook", async () => {
+    const SAMPLE_CATEGORIES_DATA_ALT = [
       {
-        name: "The replaced category",
-        author: "john",
+        key: "123",
+        name: "category 1",
+        description: "sample category 1 description",
+        identifierKey: function () {
+          return "key";
+        },
+      },
+      {
+        key: "456",
+        name: "category 2",
+        description: "sample category 2 description",
+        identifierKey: () => {
+          return "key";
+        },
+      },
+      {
+        key: "789",
+        name: "category 2",
+        description: "sample category 2 description",
+        identifierKey: function () {
+          return "key";
+        },
       },
     ];
 
+    let error = null;
+    let result = null;
+    DB.registerEntity(SAMPLE_ENTITIES.categories);
+    DB.registerEntity(SAMPLE_ENTITIES.comments);
+    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
     try {
-      inMemoryData = await DB.replaceAllDataFor(
+      await DB.createManyNewFor(
         DB.getEntities().categories,
-        REPLACED_DATA
+        SAMPLE_CATEGORIES_DATA_ALT
       );
       await DB.saveFor(DB.getEntities().categories);
-      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+
+      // retrieve
+      result = await DB.findByIdentifierFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA_ALT[2].key
+      );
     } catch (e) {
       console.log(e);
       error = e;
     }
-    assert.equal(error, null);
-    assert.deepStrictEqual(inMemoryData, REPLACED_DATA);
-    assert.deepStrictEqual(forceFetchedData, REPLACED_DATA);
 
+    assert.equal(error, null);
+    assert.deepStrictEqual(
+      transformDataObjectWithMockDates(result),
+      transformDataObjectWithMockDates(SAMPLE_CATEGORIES_DATA_ALT[2])
+    );
+    DB._resetDBAndDeleteAllData();
+  });
+
+  it("should retrieve data by identifier successfully using the identifierKey hook as arrow function", async () => {
+    const SAMPLE_CATEGORIES_DATA_ALT = [
+      {
+        key: "123",
+        name: "category 1",
+        description: "sample category 1 description",
+        identifierKey: () => {
+          return "key";
+        },
+      },
+      {
+        key: "456",
+        name: "category 2",
+        description: "sample category 2 description",
+        identifierKey: () => {
+          return "key";
+        },
+      },
+      {
+        key: "789",
+        name: "category 2",
+        description: "sample category 2 description",
+        identifierKey: function () {
+          return "key";
+        },
+      },
+    ];
+
+    let error = null;
+    let result = null;
+    DB.registerEntity(SAMPLE_ENTITIES.categories);
+    DB.registerEntity(SAMPLE_ENTITIES.comments);
+    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
+    try {
+      await DB.createManyNewFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA_ALT
+      );
+      await DB.saveFor(DB.getEntities().categories);
+
+      // retrieve
+      result = await DB.findByIdentifierFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA_ALT[2].key
+      );
+    } catch (e) {
+      console.log(e);
+      error = e;
+    }
+
+    assert.equal(error, null);
+    assert.deepStrictEqual(
+      transformDataObjectWithMockDates(result),
+      transformDataObjectWithMockDates(SAMPLE_CATEGORIES_DATA_ALT[2])
+    );
     DB._resetDBAndDeleteAllData();
   });
 });
