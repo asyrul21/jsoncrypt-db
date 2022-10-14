@@ -217,9 +217,6 @@ const moduleFn = (function () {
         validateOnCreate: (dataObj) => {
           return true;
         },
-        validateOnRead: (dataObj) => {
-          return true;
-        },
         preSaveTransform: (dataObj) => {
           return { ...dataObj };
         },
