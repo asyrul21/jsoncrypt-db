@@ -357,7 +357,6 @@ const moduleFn = (function () {
         const objIdentifierKey = entityOptions.identifierKey
           ? entityOptions.identifierKey
           : "id";
-
         const foundItems = data.filter((item) => item[objIdentifierKey] === id);
         if (foundItems.length > 0) {
           return foundItems[0];
@@ -368,9 +367,20 @@ const moduleFn = (function () {
         throw new Error(`DB for entity [${entity}] has no data.`);
       }
     },
-    findByFilterFor: async function (entity, filterFn) {
-      // TODO
-      return false;
+    findByFilterCallbackFor: async function (entity, filterFn = () => {}) {
+      validateEntityForMethod(entity, "findByFilterCallbackFor");
+      let data;
+      if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
+        data = entityDataMap[entity];
+      } else {
+        data = await DataReadWriter.readAsync(entity);
+      }
+      if (data.length > 0) {
+        const foundItems = data.filter(filterFn);
+        return foundItems;
+      } else {
+        throw new Error(`DB for entity [${entity}] has no data.`);
+      }
     },
     createNewFor: async function (entity, obj) {
       validateEntityForMethod(entity, "createNewFor");

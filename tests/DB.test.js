@@ -23,8 +23,8 @@ const SAMPLE_CATEGORIES_DATA = [
   },
   {
     id: "789",
-    name: "category 2",
-    description: "sample category 2 description",
+    name: "category 3",
+    description: "sample category 3 description",
   },
 ];
 
@@ -464,6 +464,39 @@ describe("DB: Retrieving and Saving Data", () => {
     assert.deepStrictEqual(
       transformDataObjectWithMockDates(result),
       transformDataObjectWithMockDates(SAMPLE_CATEGORIES_DATA[2])
+    );
+    DB._resetDBAndDeleteAllData();
+  });
+
+  it("should retrieve data by filter function successfully", async () => {
+    let error = null;
+    let result = null;
+    DB.registerEntity(SAMPLE_ENTITIES.categories);
+    DB.registerEntity(SAMPLE_ENTITIES.comments);
+    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
+    try {
+      await DB.createManyNewFor(
+        DB.getEntities().categories,
+        SAMPLE_CATEGORIES_DATA
+      );
+      await DB.saveFor(DB.getEntities().categories);
+
+      // retrieve
+      result = await DB.findByFilterCallbackFor(
+        DB.getEntities().categories,
+        (obj) => {
+          return obj.name === "category 2";
+        }
+      );
+    } catch (e) {
+      console.log(e);
+      error = e;
+    }
+
+    assert.equal(error, null);
+    assert.deepStrictEqual(
+      transformDataObjectWithMockDates(result[0]),
+      transformDataObjectWithMockDates(SAMPLE_CATEGORIES_DATA[1])
     );
     DB._resetDBAndDeleteAllData();
   });
