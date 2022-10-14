@@ -1,8 +1,9 @@
 const assert = require("assert");
 const fs = require("fs");
+const path = require("path");
 const DB = require("../DB");
-const DataReadWriter = require("../DataReadWriter");
 
+const BUFFER_ENCODING = "utf-8";
 const SAMPLE_SECRET = "sampleSecret";
 const SAMPLE_VECTOR = "sampleVector";
 const SAMPLE_ENTITIES = {
@@ -56,6 +57,14 @@ const transformDataObjectWithMockDates = (dataObj) => {
     createdAt: new Date(2020, 0, 2),
     updatedAt: new Date(2020, 0, 2),
   };
+};
+
+const transformEntireDBWithMockDates = (dataMap) => {
+  let result = {};
+  Object.keys(dataMap).forEach((e) => {
+    result[e] = transformDataArrayWithMockDates(dataMap[e]);
+  });
+  return result;
 };
 
 describe("DB: Registering entities", () => {
@@ -695,4 +704,507 @@ describe("DB: Entity Option Hooks", () => {
     );
     DB._resetDBAndDeleteAllData();
   });
+});
+
+describe("DB: Importing", () => {
+  beforeEach(() => {
+    DB._resetDBAndDeleteAllData();
+  });
+
+  describe("Import by Entity", () => {
+    const SAMPLE_EXPECTED = [
+      {
+        id: "4321",
+        name: "Personal Development & Productivity",
+      },
+      {
+        id: "5432",
+        name: "Sports",
+      },
+    ];
+
+    it("should import data by entity and save during build", async () => {
+      let error = null;
+      let inMemory;
+      let forcedFetchedData;
+
+      try {
+        DB.registerEntity(SAMPLE_ENTITIES.categories);
+        // add data import path
+        DB.importJSONFileForEntity(
+          "categories",
+          "tests/sampleImportData/categories.json"
+        );
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+
+        inMemory = await DB.findAllFor(DB.getEntities().categories);
+        forcedFetchedData = await DB.findAllFor(
+          DB.getEntities().categories,
+          true
+        );
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.equal(error, null);
+      assert.deepStrictEqual(
+        transformDataArrayWithMockDates(inMemory),
+        transformDataArrayWithMockDates(SAMPLE_EXPECTED)
+      );
+      assert.deepStrictEqual(
+        transformDataArrayWithMockDates(forcedFetchedData),
+        transformDataArrayWithMockDates(SAMPLE_EXPECTED)
+      );
+      assert.deepStrictEqual(
+        transformDataArrayWithMockDates(forcedFetchedData),
+        transformDataArrayWithMockDates(inMemory)
+      );
+    });
+
+    it("should throw error if imported data structure is invalid.", async () => {
+      let error = null;
+      try {
+        DB.registerEntity(SAMPLE_ENTITIES.categories);
+        DB.importJSONFileForEntity(
+          "categories",
+          "tests/sampleImportData/invalid.json"
+        );
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+
+      assert.notEqual(error, null);
+    });
+
+    it("should throw error if csv file is provided.", async () => {
+      let error = null;
+      try {
+        DB.registerEntity(SAMPLE_ENTITIES.categories);
+        DB.importJSONFileForEntity(
+          "categories",
+          "tests/sampleImportData/csvTest.csv"
+        );
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.notEqual(error, null);
+    });
+
+    it("should throw error if entireDBImportData prop is populated", async () => {
+      let error = null;
+      try {
+        DB.registerEntity(SAMPLE_ENTITIES.categories);
+        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.importJSONFileForEntity(
+          "categories",
+          "tests/sampleImportData/invalid.json"
+        );
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.notEqual(error, null);
+    });
+  });
+
+  describe("Import by Entire Database", () => {
+    const EXTENDED_ENTITES = {
+      ...SAMPLE_ENTITIES,
+      users: "users",
+    };
+
+    const SAMPLE_EXPECTED = {
+      users: [
+        {
+          id: "12345",
+          username: "Ahmad",
+          password: "1234",
+        },
+      ],
+      categories: [
+        {
+          id: "4321",
+          name: "Personal Development & Productivity",
+        },
+        {
+          id: "5432",
+          name: "Sports",
+        },
+      ],
+      comments: [
+        {
+          id: "4567",
+          comment: "Awesome!",
+          author: "John Wick",
+        },
+      ],
+    };
+
+    it("should import entire database data and save during build", async () => {
+      let error = null;
+      let inMemory;
+      let forcedFetchedCategories;
+      let forcedFetchedUsers;
+      let forcedFetchedComments;
+
+      try {
+        DB.registerEntity(EXTENDED_ENTITES.users);
+        DB.registerEntity(EXTENDED_ENTITES.categories);
+        DB.registerEntity(EXTENDED_ENTITES.comments);
+        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+
+        inMemory = DB.getEntireDatabase();
+        forcedFetchedCategories = await DB.findAllFor(
+          DB.getEntities().categories,
+          true
+        );
+        forcedFetchedUsers = await DB.findAllFor(DB.getEntities().users, true);
+        forcedFetchedComments = await DB.findAllFor(
+          DB.getEntities().comments,
+          true
+        );
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.equal(error, null);
+      assert.deepStrictEqual(
+        transformEntireDBWithMockDates(inMemory),
+        transformEntireDBWithMockDates(SAMPLE_EXPECTED)
+      );
+      assert.deepStrictEqual(
+        transformDataArrayWithMockDates(forcedFetchedCategories),
+        transformDataArrayWithMockDates(SAMPLE_EXPECTED.categories)
+      );
+      assert.deepStrictEqual(
+        transformDataArrayWithMockDates(forcedFetchedUsers),
+        transformDataArrayWithMockDates(SAMPLE_EXPECTED.users)
+      );
+      assert.deepStrictEqual(
+        transformDataArrayWithMockDates(forcedFetchedComments),
+        transformDataArrayWithMockDates(SAMPLE_EXPECTED.comments)
+      );
+    });
+
+    it("should throw error if imported data structure is invalid.", async () => {
+      let error = null;
+      try {
+        DB.registerEntity(EXTENDED_ENTITES.users);
+        DB.registerEntity(EXTENDED_ENTITES.categories);
+        DB.registerEntity(EXTENDED_ENTITES.comments);
+        DB.importJSONFileForEntireDB("tests/sampleImportData/invalid.json");
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.notEqual(error, null);
+    });
+
+    it("should throw error if entityImportData prop is populated", async () => {
+      let error = null;
+      try {
+        DB.registerEntity(SAMPLE_ENTITIES.categories);
+        DB.importJSONFileForEntity(
+          "categories",
+          "tests/sampleImportData/invalid.json"
+        );
+        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.notEqual(error, null);
+    });
+  });
+});
+
+describe("DB: Exporting", () => {
+  beforeEach(() => {
+    DB._resetDBAndDeleteAllData();
+  });
+
+  const EXTENDED_ENTITES = {
+    ...SAMPLE_ENTITIES,
+    users: "users",
+  };
+
+  const SAMPLE_EXPECTED = [
+    {
+      id: "4321",
+      name: "Personal Development & Productivity",
+    },
+    {
+      id: "5432",
+      name: "Sports",
+    },
+  ];
+
+  describe("Export data by Entity", () => {
+    it("should export data to file by entity, with only folderPath given", async () => {
+      let error = null;
+      let data;
+      const testExportDir = "tests/data/test/backup";
+      const defaultFileName = `db_export_categories.json`;
+
+      try {
+        DB.registerEntity(EXTENDED_ENTITES.users);
+        DB.registerEntity(EXTENDED_ENTITES.categories);
+        DB.registerEntity(EXTENDED_ENTITES.comments);
+        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+
+        // export entity data
+        DB.exportDataToJSONForEntity(
+          DB.getEntities().categories,
+          testExportDir
+        );
+
+        const dataStr = fs.readFileSync(`${testExportDir}/${defaultFileName}`, {
+          encoding: BUFFER_ENCODING,
+        });
+        data = JSON.parse(dataStr);
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.equal(error, null);
+      assert.deepStrictEqual(data, SAMPLE_EXPECTED);
+      fs.unlinkSync(`${testExportDir}/${defaultFileName}`);
+      fs.rmSync(testExportDir, { recursive: true, force: true });
+    });
+
+    it("should export data to file by entity, with folderPath and filename given", async () => {
+      let error = null;
+      let data;
+      const testExportDir = "tests/data/test/backup/";
+      const customName = `my_categories_export`;
+      try {
+        DB.registerEntity(EXTENDED_ENTITES.users);
+        DB.registerEntity(EXTENDED_ENTITES.categories);
+        DB.registerEntity(EXTENDED_ENTITES.comments);
+        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+
+        // export entity data
+        DB.exportDataToJSONForEntity(
+          DB.getEntities().categories,
+          testExportDir,
+          customName
+        );
+
+        // should append .json implicitly
+        const dataStr = fs.readFileSync(
+          `${path.resolve(testExportDir, customName)}.json`,
+          {
+            encoding: BUFFER_ENCODING,
+          }
+        );
+        data = JSON.parse(dataStr);
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.equal(error, null);
+      assert.deepStrictEqual(data, SAMPLE_EXPECTED);
+      fs.unlinkSync(`${path.resolve(testExportDir, customName)}.json`);
+      fs.rmSync(testExportDir, { recursive: true, force: true });
+    });
+
+    it("should throw file write errors and undo directory creation when filename of invalid extension is provided", async () => {
+      let error = null;
+      const testExportDir = "tests/data/test/backup";
+      const customName = `db_export_categories.pdf`;
+      try {
+        DB.registerEntity(EXTENDED_ENTITES.users);
+        DB.registerEntity(EXTENDED_ENTITES.categories);
+        DB.registerEntity(EXTENDED_ENTITES.comments);
+        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+        // export entity data
+        DB.exportDataToJSONForEntity(
+          DB.getEntities().categories,
+          testExportDir,
+          customName
+        );
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.notEqual(error, null);
+      const folderExists = fs.existsSync(testExportDir);
+      assert.equal(folderExists, false);
+    });
+  });
+
+  describe("Import by Entire Database", () => {
+    const EXTENDED_ENTITES = {
+      ...SAMPLE_ENTITIES,
+      users: "users",
+    };
+
+    const SAMPLE_EXPECTED = {
+      users: [
+        {
+          id: "12345",
+          username: "Ahmad",
+          password: "1234",
+        },
+      ],
+      categories: [
+        {
+          id: "4321",
+          name: "Personal Development & Productivity",
+        },
+        {
+          id: "5432",
+          name: "Sports",
+        },
+      ],
+      comments: [
+        {
+          id: "4567",
+          comment: "Awesome!",
+          author: "John Wick",
+        },
+      ],
+    };
+
+    it("should export entire database data to file when only folder path is provided", async () => {
+      let error = null;
+      let data;
+      const testExportDir = "tests/data/test/backup/";
+      const defaultFileName = `db_export_all.json`;
+
+      try {
+        DB.registerEntity(EXTENDED_ENTITES.users);
+        DB.registerEntity(EXTENDED_ENTITES.categories);
+        DB.registerEntity(EXTENDED_ENTITES.comments);
+        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+
+        // export entity data
+        DB.exportEntireDatabaseToJSON(testExportDir, defaultFileName);
+
+        const dataStr = fs.readFileSync(`${testExportDir}/${defaultFileName}`, {
+          encoding: BUFFER_ENCODING,
+        });
+        data = JSON.parse(dataStr);
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.equal(error, null);
+      assert.deepStrictEqual(data, SAMPLE_EXPECTED);
+      fs.unlinkSync(`${testExportDir}/${defaultFileName}`);
+      fs.rmSync(testExportDir, { recursive: true, force: true });
+    });
+
+    it("should export entire database data to file when folder path and custom file name is provided", async () => {
+      let error = null;
+      let data;
+      const testExportDir = "tests/data/test/backup/";
+      const customName = `my_entire_db_export`;
+
+      try {
+        DB.registerEntity(EXTENDED_ENTITES.users);
+        DB.registerEntity(EXTENDED_ENTITES.categories);
+        DB.registerEntity(EXTENDED_ENTITES.comments);
+        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+
+        // export entity data
+        DB.exportEntireDatabaseToJSON(testExportDir, customName);
+        // should append .json implicitly
+        const dataStr = fs.readFileSync(
+          `${path.resolve(testExportDir, customName)}.json`,
+          {
+            encoding: BUFFER_ENCODING,
+          }
+        );
+        data = JSON.parse(dataStr);
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.equal(error, null);
+      assert.deepStrictEqual(data, SAMPLE_EXPECTED);
+      fs.unlinkSync(`${path.resolve(testExportDir, customName)}.json`);
+      fs.rmSync(testExportDir, { recursive: true, force: true });
+    });
+
+    it("should throw file write error and undo folder creation when invalid file extension is requested", async () => {
+      let error = null;
+      const testExportDir = "tests/data/test/backup/";
+      const customName = `db_export_all.pdf`;
+      try {
+        DB.registerEntity(EXTENDED_ENTITES.users);
+        DB.registerEntity(EXTENDED_ENTITES.categories);
+        DB.registerEntity(EXTENDED_ENTITES.comments);
+        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
+          env: "test",
+          isTestMode: true,
+        });
+        // export entity data
+        DB.exportEntireDatabaseToJSON(testExportDir, customName);
+      } catch (e) {
+        console.log(e);
+        error = e;
+      }
+      assert.notEqual(error, null);
+      const folderExists = fs.existsSync(testExportDir);
+      assert.equal(folderExists, false);
+    });
+  });
+});
+
+after(() => {
+  DB._resetDBAndDeleteAllData();
+  fs.rmSync("tests/data/dev", { recursive: true, force: true });
+  fs.rmSync("tests/data/prod", { recursive: true, force: true });
+  fs.rmSync("tests/data/test", { recursive: true, force: true });
 });

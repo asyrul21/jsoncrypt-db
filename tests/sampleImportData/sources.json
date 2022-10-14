@@ -1,0 +1,18 @@
+[
+  {
+    "id": "1234",
+    "title": "Deep Work",
+    "Author": "Cal Newport",
+    "dateStart": "12 April 2020",
+    "dateEnd": "20 April 2020",
+    "category": "id:12345"
+  },
+  {
+    "id": "4321",
+    "title": "Clean Code",
+    "Author": "Robert C. Martin",
+    "dateStart": "12 April 2020",
+    "dateEnd": "20 April 2020",
+    "category": "id:54321"
+  }
+]

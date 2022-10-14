@@ -1,5 +1,12 @@
 const DataReadWriter = require("./DataReadWriter");
+const fs = require("fs");
+const path = require("path");
 const { stringHasValue, objectHasMethod } = require("./utils");
+
+const BUFFER_ENCODING = "utf-8";
+const DEFAULT_ENTITY_EXPORT_FILENAME = (entity) => {
+  return `db_export_${entity}.json`;
+};
 
 const moduleFn = (function () {
   /**
@@ -41,6 +48,10 @@ const moduleFn = (function () {
    */
   let entityDataMap = {};
 
+  // both entityImportData and entireDBImport data have the same structure
+  let entityImportData = {};
+  let entireDBImportData = {};
+
   const isRunning = () => {
     return (
       entities &&
@@ -49,6 +60,70 @@ const moduleFn = (function () {
       Object.keys(entityDataMap).length > 0 &&
       DataReadWriter.isInitialized()
     );
+  };
+
+  const generateImportedData = () => {
+    let result;
+    if (entireDBImportData && Object.keys(entireDBImportData).length !== 0) {
+      result = { ...entireDBImportData };
+      entireDBImportData = {};
+    } else if (entityImportData && Object.keys(entityImportData).length !== 0) {
+      result = { ...entityImportData };
+      entityImportData = {};
+    } else {
+      result = null;
+    }
+    return result;
+  };
+
+  const validateEntityImportDataStructure = (data) => {
+    /**
+     * Import data structure must be a list of objects
+     */
+    if (!data || typeof data !== "object" || !data[0]) {
+      throw new Error(
+        "Import data provided for entity does not have a valid structure. Top level structure must be a list/array."
+      );
+    }
+    if ((data[0] && !typeof data[0] === "object") || data[0][0]) {
+      throw new Error(
+        "Import data provided for entity does not have a valid structure. Top level list must contain entity objects of type [object]"
+      );
+    }
+  };
+
+  const validateEntireDBStructure = (data) => {
+    /**
+     * Import data structure must be an object with key entity name and value a list of entity objects.
+     * This is exactly similar to the structure of entityDataMap.
+     *
+     * eg:
+     *
+     * {
+     *    categories: [ ... data ...],
+     *    comments: [ ...data... ]
+     * }
+     *
+     */
+    if (!data || typeof data !== "object" || data[0]) {
+      throw new Error(
+        "Import entire DB data provided does not have a valid structure. Top level DB structure must be a an object."
+      );
+    }
+    let invalidEntityStructures = [];
+    // validate structure of every entity data
+    Object.keys(data).forEach((e) => {
+      try {
+        validateEntityImportDataStructure(data[e]);
+      } catch (error) {
+        invalidEntityStructures.push(e);
+      }
+    });
+    if (invalidEntityStructures.length > 0) {
+      throw new Error(
+        `Import entire DB data failed. Entity keys ${invalidEntityStructures.toString()} must a list/array containing entity objects as values.`
+      );
+    }
   };
 
   const validateEntityForMethod = (entity, methodName) => {
@@ -63,23 +138,46 @@ const moduleFn = (function () {
     }
   };
 
-  const validateDataObjectForEntity = (entity, obj) => {
+  const validateDataObjectOnCreateForEntity = (entity, obj) => {
     if (!obj) {
       return false;
     }
-    const entityOptions = entities[entity].options;
-    return objectHasMethod(entityOptions, "validateOnCreate")
-      ? entityOptions.validateOnCreate(obj)
-      : true;
+    const res = entities[entity].options.validateOnCreate(obj);
+    return res;
   };
 
-  const enrichDataWithDBProps = (obj) => {
+  const validateDataObjectOnReadForEntity = (entity, obj) => {
+    if (!obj) {
+      return false;
+    }
+    return entities[entity].options.validateOnRead(obj);
+  };
+
+  const transformDataObjectOnCreateAndUpdateForEntity = (entity, obj) => {
+    if (!obj) {
+      return false;
+    }
+    const res = entities[entity].options.preSaveTransform(obj);
+    return res;
+  };
+
+  const enrichDataWithDBProps = (obj, mode = "create") => {
+    if (mode === "create") {
+      return {
+        ...obj,
+        createdAt: (function () {
+          const d = new Date();
+          return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        })(),
+        updatedAt: (function () {
+          const d = new Date();
+          return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        })(),
+      };
+    }
+    // for updates
     return {
       ...obj,
-      createdAt: (function () {
-        const d = new Date();
-        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      })(),
       updatedAt: (function () {
         const d = new Date();
         return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -91,6 +189,8 @@ const moduleFn = (function () {
     _resetDBAndDeleteAllData: function () {
       entities = {};
       entityDataMap = {};
+      entityImportData = {};
+      entireDBImportData = {};
       if (DataReadWriter.isInitialized()) {
         DataReadWriter._resetAndDeleteAllData();
       }
@@ -117,6 +217,12 @@ const moduleFn = (function () {
         validateOnCreate: (dataObj) => {
           return true;
         },
+        validateOnRead: (dataObj) => {
+          return true;
+        },
+        preSaveTransform: (dataObj) => {
+          return { ...dataObj };
+        },
       }
     ) {
       if (this.isUp()) {
@@ -129,12 +235,30 @@ const moduleFn = (function () {
           "Invalid parameter [entity] provided for function [registerEntity]."
         );
       }
+
       if (entities && !Object.keys(entities).includes(entity)) {
+        // hook preparations
+        const validateCreateHook = objectHasMethod(options, "validateOnCreate")
+          ? options.validateOnCreate
+          : (dataObj) => {
+              return true;
+            };
+        const transformHook = objectHasMethod(options, "preSaveTransform")
+          ? options.preSaveTransform
+          : (dataObj) => {
+              return { ...dataObj };
+            };
+
+        // compose
         entities = {
           ...entities,
           [entity]: {
             name: entity,
-            options,
+            options: {
+              ...options,
+              validateOnCreate: validateCreateHook,
+              preSaveTransform: transformHook,
+            },
           },
         };
       }
@@ -168,12 +292,14 @@ const moduleFn = (function () {
       }
       try {
         if (!DataReadWriter.isInitialized()) {
+          const dataImport = generateImportedData();
           DataReadWriter.initialize(
             cryptoSecret,
             vectorSecret,
             Object.keys(entities),
             {
               ...options,
+              dataImport,
             }
           );
         }
@@ -188,10 +314,13 @@ const moduleFn = (function () {
         }
         console.log("SIMPLE DB BUILD SUCCESS!");
       } catch (error) {
-        console.log("ERROR while building DB:");
+        console.log("ERROR while performing module method [build]:");
         console.error(error);
         throw new Error(error.message || error);
       }
+    },
+    getEntireDatabase: function () {
+      return entityDataMap;
     },
     // force fetch allows clients to fetch data directly from database,
     // bypassing data that has been changed in memory.
@@ -239,9 +368,13 @@ const moduleFn = (function () {
         throw new Error(`DB for entity [${entity}] has no data.`);
       }
     },
+    findByFilterFor: async function (entity, filterFn) {
+      // TODO
+      return false;
+    },
     createNewFor: async function (entity, obj) {
       validateEntityForMethod(entity, "createNewFor");
-      const validated = validateDataObjectForEntity(entity, obj);
+      const validated = validateDataObjectOnCreateForEntity(entity, obj);
       if (validated) {
         let data;
         if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
@@ -251,7 +384,11 @@ const moduleFn = (function () {
           // FETCH
           data = await DataReadWriter.readAsync(entity);
         }
-        data.push(enrichDataWithDBProps(obj));
+        const newDataObj = transformDataObjectOnCreateAndUpdateForEntity(
+          entity,
+          obj
+        );
+        data.push(enrichDataWithDBProps(newDataObj, "create"));
         // UPDATE MEMORY
         entityDataMap[entity] = [...data];
         // RETURN
@@ -272,9 +409,13 @@ const moduleFn = (function () {
         data = await DataReadWriter.readAsync(entity);
       }
       objDataArray.forEach((obj) => {
-        const validated = validateDataObjectForEntity(entity, obj);
+        const validated = validateDataObjectOnCreateForEntity(entity, obj);
         if (obj && validated) {
-          data.push(enrichDataWithDBProps(obj));
+          const newDataObj = transformDataObjectOnCreateAndUpdateForEntity(
+            entity,
+            obj
+          );
+          data.push(enrichDataWithDBProps(newDataObj, "create"));
         }
       });
       // UPDATE MEMORY
@@ -309,11 +450,23 @@ const moduleFn = (function () {
               updatedData[k] = newData[k];
             }
           });
-          const validated = validateDataObjectForEntity(entity, updatedData);
+          const validated = validateDataObjectOnCreateForEntity(
+            entity,
+            updatedData
+          );
           if (validated) {
+            const transformedData =
+              transformDataObjectOnCreateAndUpdateForEntity(
+                entity,
+                updatedData
+              );
+            const enrichedData = enrichDataWithDBProps(
+              transformedData,
+              "update"
+            );
             data.forEach((item) => {
               if (item[objIdentifierKey] === id) {
-                item = { ...updatedData };
+                item = { ...enrichedData };
               }
             });
             // UPDATE MEMORY
@@ -365,7 +518,7 @@ const moduleFn = (function () {
       try {
         await DataReadWriter.saveAsync(entity, entityDataMap[entity]);
       } catch (e) {
-        console.log("ERROR while saveFor:");
+        console.log("ERROR while performing module method [saveFor]:");
         console.error(error);
         throw new Error(error.message || error);
       }
@@ -377,7 +530,154 @@ const moduleFn = (function () {
         });
         await Promise.all(savePromises);
       } catch (error) {
-        console.log("ERROR while saveAll:");
+        console.log("ERROR while performing module method [saveAll]:");
+        console.error(error);
+        throw new Error(error.message || error);
+      }
+    },
+    importJSONFileForEntity: function (entity, filePath) {
+      validateEntityForMethod(entity, "importJSONFileForEntity");
+      if (this.isUp()) {
+        throw new Error(
+          "Can't import files once DB is built. Please add them before building."
+        );
+      }
+      if (entireDBImportData && Object.keys(entireDBImportData).length !== 0) {
+        throw new Error(
+          "Can't import entity files if method [importJSONFileForEntireDB] was previously called. Only use [importJSONFileForEntity] OR [importJSONFileForEntireDB], but not both."
+        );
+      }
+      try {
+        const fileExt = path.extname(filePath);
+        if (fileExt !== ".json") {
+          throw new Error(
+            "Invalid file extension. Imports are only readable from JSON files."
+          );
+        }
+        const dataStr = fs.readFileSync(filePath, {
+          encoding: BUFFER_ENCODING,
+        });
+        const data = JSON.parse(dataStr);
+        // check structure
+        validateEntityImportDataStructure(data);
+        // add to map
+        entityImportData[entity] = [...data];
+      } catch (error) {
+        console.log(
+          "ERROR while performing module method [importJSONFileForEntity]:"
+        );
+        console.error(error);
+        throw new Error(error.message || error);
+      }
+    },
+    importJSONFileForEntireDB: function (filePath) {
+      if (this.isUp()) {
+        throw new Error(
+          "Can't import data once DB is built. Please add them before building."
+        );
+      }
+      if (entityImportData && Object.keys(entityImportData).length !== 0) {
+        throw new Error(
+          "Can't import entire DB if method [importJSONFileForEntity] was previously called. Only use [importJSONFileForEntity] OR [importJSONFileForEntireDB], but not both."
+        );
+      }
+      try {
+        const fileExt = path.extname(filePath);
+        if (fileExt !== ".json") {
+          throw new Error(
+            "Invalid file extension. Imports are only readable from JSON files."
+          );
+        }
+        const dataStr = fs.readFileSync(filePath, {
+          encoding: BUFFER_ENCODING,
+        });
+        const data = JSON.parse(dataStr);
+        // check structure
+        validateEntireDBStructure(data);
+        // add to map
+        entireDBImportData = { ...data };
+      } catch (error) {
+        console.log(
+          "ERROR while performing module method [importJSONFileForEntireDB]:"
+        );
+        console.error(error);
+        throw new Error(error.message || error);
+      }
+    },
+    exportDataToJSONForEntity: function (entity, folderPath, filename = null) {
+      validateEntityForMethod(entity, "exportDataToJSONForEntity");
+      if (!folderPath) {
+        throw new Error(
+          "Argument [folderPath] is required for module method [exportDataToJSONForEntity]."
+        );
+      }
+      try {
+        const dataStr = JSON.stringify(entityDataMap[entity]);
+        // create folder if not exist
+        if (!fs.existsSync(folderPath)) {
+          fs.mkdirSync(folderPath, { recursive: true });
+        }
+        let basename = filename
+          ? filename
+          : DEFAULT_ENTITY_EXPORT_FILENAME(entity);
+        if (path.extname(basename) === "") {
+          basename += ".json";
+        } else if (
+          path.extname(basename) &&
+          path.extname(basename) !== ".json"
+        ) {
+          // undo folder creation
+          fs.rmSync(folderPath, { recursive: true, force: true });
+          throw new Error(
+            "Invalid file extension. Exports are only writable to JSON files."
+          );
+        }
+        // create fil
+        fs.writeFileSync(`${path.resolve(folderPath, basename)}`, dataStr, {
+          encoding: BUFFER_ENCODING,
+        });
+      } catch (error) {
+        console.log(
+          "ERROR while performing module method [exportDataToJSONForEntity]:"
+        );
+        console.error(error);
+        throw new Error(error.message || error);
+      }
+    },
+    exportEntireDatabaseToJSON: function (folderPath, filename = null) {
+      if (!folderPath) {
+        throw new Error(
+          "Argument [folderPath] is required for module method [exportEntireDatabaseToJSON]."
+        );
+      }
+      try {
+        const dataStr = JSON.stringify(entityDataMap);
+        if (!fs.existsSync(folderPath)) {
+          fs.mkdirSync(folderPath, { recursive: true });
+        }
+        let basename = filename
+          ? filename
+          : DEFAULT_ENTITY_EXPORT_FILENAME("all");
+        if (path.extname(basename) === "") {
+          basename += ".json";
+        } else if (
+          path.extname(basename) &&
+          path.extname(basename) !== ".json"
+        ) {
+          // undo folder creation
+          fs.rmSync(folderPath, { recursive: true, force: true });
+          throw new Error(
+            "Invalid file extension. Exports are only writable to JSON files."
+          );
+        }
+        // create fil
+        fs.writeFileSync(`${path.resolve(folderPath, basename)}`, dataStr, {
+          encoding: BUFFER_ENCODING,
+        });
+      } catch (error) {
+        console.log(
+          "ERROR while performing module method [exportEntireDatabaseToJSON]:"
+        );
         console.error(error);
         throw new Error(error.message || error);
       }

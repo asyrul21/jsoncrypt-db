@@ -16,7 +16,7 @@ const moduleFn = (function () {
   /**
    * entityFilesMap is a map of entity to their respective data path of the file to store data.
    * Example:
-   *   const ENTITIES = {
+   *    {
    *    test: "test.json",
    *    admin: "admin.json",
    *    categories: "categories.json",
@@ -60,11 +60,11 @@ const moduleFn = (function () {
     return;
   };
 
-  const createFileIfNotExist = function (cryptor, filePath) {
+  const createFileIfNotExist = function (cryptor, filePath, data = []) {
     if (fs.existsSync(filePath)) {
       return;
     }
-    const initDataStr = JSON.stringify([]);
+    const initDataStr = JSON.stringify(data);
     const encryptedData = cryptor.encrypt(initDataStr);
     fs.writeFileSync(filePath, encryptedData, {
       encoding: BUFFER_ENCODING,
@@ -88,6 +88,7 @@ const moduleFn = (function () {
       options = {
         env: "dev",
         isTestMode: false,
+        dataImport: null,
       }
     ) {
       if (!hasBeenInitialized()) {
@@ -118,7 +119,11 @@ const moduleFn = (function () {
             ? `${__dirname}/tests/data/${environment}/${curr}.json`
             : `${__dirname}/data/${environment}/${curr}.json`;
           createDirectoryIfNotExist(dataFilePath);
-          createFileIfNotExist(cryptor, dataFilePath);
+          const entityDataImport =
+            options.dataImport && options.dataImport[curr]
+              ? options.dataImport[curr]
+              : [];
+          createFileIfNotExist(cryptor, dataFilePath, entityDataImport);
           return {
             ...prev,
             [curr.toString()]: dataFilePath,
