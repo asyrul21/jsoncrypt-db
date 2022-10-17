@@ -2,7 +2,7 @@
 
 > This module is currently under further testing. You may not want to install it just yet.
 
-This module presents a simple, serverless, encrypted, and deploy-ready data storage for Node JS. It has only 1 dependency, and allows clients to implement data persistent application without having to think about what database to use (mongo/my-sql/sql server/oracle db etc.), where, and how to deploy them. You can implement it either within your server/backend application, or even deploy it on its own as a service.
+This module presents a simple, unstructured (no-sql), serverless, encrypted, and deploy-ready data storage for Node JS. It has only 1 dependency, and allows clients to implement data persistent application without having to think about what database to use (mongo/my-sql/sql server/oracle db etc.), where, and how to deploy them. You can implement it either within your server/backend application, or even deploy it on its own as a service.
 
 Some important notes:
 
