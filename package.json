@@ -1,6 +1,6 @@
 {
   "name": "refridgerator",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "A simple, lightweight, east-to-use, unstructured (no-sql), encrypted, and deploy-ready file-based data storage for Node JS",
   "main": "index.js",
   "scripts": {
