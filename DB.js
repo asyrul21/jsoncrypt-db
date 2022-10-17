@@ -542,8 +542,8 @@ const moduleFn = (function () {
         throw new Error(error.message || error);
       }
     },
-    importJSONFileForEntity: function (entity, filePath) {
-      validateEntityForMethod(entity, "importJSONFileForEntity");
+    importDataFromJSONFileForEntity: function (entity, filePath) {
+      validateEntityForMethod(entity, "importDataFromJSONFileForEntity");
       if (this.isUp()) {
         throw new Error(
           "Can't import files once DB is built. Please add them before building."
@@ -551,7 +551,7 @@ const moduleFn = (function () {
       }
       if (entireDBImportData && Object.keys(entireDBImportData).length !== 0) {
         throw new Error(
-          "Can't import entity files if method [importJSONFileForEntireDB] was previously called. Only use [importJSONFileForEntity] OR [importJSONFileForEntireDB], but not both."
+          "Can't import entity files if method [importDataFromJSONFileForEntireDB] was previously called. Only use [importDataFromJSONFileForEntity] OR [importDataFromJSONFileForEntireDB], but not both."
         );
       }
       try {
@@ -571,13 +571,13 @@ const moduleFn = (function () {
         entityImportData[entity] = [...data];
       } catch (error) {
         console.log(
-          "ERROR while performing module method [importJSONFileForEntity]:"
+          "ERROR while performing module method [importDataFromJSONFileForEntity]:"
         );
         console.error(error);
         throw new Error(error.message || error);
       }
     },
-    importJSONFileForEntireDB: function (filePath) {
+    importDataFromJSONFileForEntireDB: function (filePath) {
       if (this.isUp()) {
         throw new Error(
           "Can't import data once DB is built. Please add them before building."
@@ -585,7 +585,7 @@ const moduleFn = (function () {
       }
       if (entityImportData && Object.keys(entityImportData).length !== 0) {
         throw new Error(
-          "Can't import entire DB if method [importJSONFileForEntity] was previously called. Only use [importJSONFileForEntity] OR [importJSONFileForEntireDB], but not both."
+          "Can't import entire DB if method [importDataFromJSONFileForEntity] was previously called. Only use [importDataFromJSONFileForEntity] OR [importDataFromJSONFileForEntireDB], but not both."
         );
       }
       try {
@@ -605,7 +605,7 @@ const moduleFn = (function () {
         entireDBImportData = { ...data };
       } catch (error) {
         console.log(
-          "ERROR while performing module method [importJSONFileForEntireDB]:"
+          "ERROR while performing module method [importDataFromJSONFileForEntireDB]:"
         );
         console.error(error);
         throw new Error(error.message || error);

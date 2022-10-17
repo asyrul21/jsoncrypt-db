@@ -818,7 +818,7 @@ describe("DB: Importing", () => {
       try {
         DB.registerEntity(SAMPLE_ENTITIES.categories);
         // add data import path
-        DB.importJSONFileForEntity(
+        DB.importDataFromJSONFileForEntity(
           "categories",
           "tests/sampleImportData/categories.json"
         );
@@ -855,7 +855,7 @@ describe("DB: Importing", () => {
       let error = null;
       try {
         DB.registerEntity(SAMPLE_ENTITIES.categories);
-        DB.importJSONFileForEntity(
+        DB.importDataFromJSONFileForEntity(
           "categories",
           "tests/sampleImportData/invalid.json"
         );
@@ -875,7 +875,7 @@ describe("DB: Importing", () => {
       let error = null;
       try {
         DB.registerEntity(SAMPLE_ENTITIES.categories);
-        DB.importJSONFileForEntity(
+        DB.importDataFromJSONFileForEntity(
           "categories",
           "tests/sampleImportData/csvTest.csv"
         );
@@ -894,8 +894,10 @@ describe("DB: Importing", () => {
       let error = null;
       try {
         DB.registerEntity(SAMPLE_ENTITIES.categories);
-        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
-        DB.importJSONFileForEntity(
+        DB.importDataFromJSONFileForEntireDB(
+          "tests/sampleImportData/entireDB.json"
+        );
+        DB.importDataFromJSONFileForEntity(
           "categories",
           "tests/sampleImportData/invalid.json"
         );
@@ -955,7 +957,9 @@ describe("DB: Importing", () => {
         DB.registerEntity(EXTENDED_ENTITES.users);
         DB.registerEntity(EXTENDED_ENTITES.categories);
         DB.registerEntity(EXTENDED_ENTITES.comments);
-        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.importDataFromJSONFileForEntireDB(
+          "tests/sampleImportData/entireDB.json"
+        );
         DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
           env: "test",
           isTestMode: true,
@@ -1000,7 +1004,9 @@ describe("DB: Importing", () => {
         DB.registerEntity(EXTENDED_ENTITES.users);
         DB.registerEntity(EXTENDED_ENTITES.categories);
         DB.registerEntity(EXTENDED_ENTITES.comments);
-        DB.importJSONFileForEntireDB("tests/sampleImportData/invalid.json");
+        DB.importDataFromJSONFileForEntireDB(
+          "tests/sampleImportData/invalid.json"
+        );
         DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
           env: "test",
           isTestMode: true,
@@ -1016,11 +1022,13 @@ describe("DB: Importing", () => {
       let error = null;
       try {
         DB.registerEntity(SAMPLE_ENTITIES.categories);
-        DB.importJSONFileForEntity(
+        DB.importDataFromJSONFileForEntity(
           "categories",
           "tests/sampleImportData/invalid.json"
         );
-        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.importDataFromJSONFileForEntireDB(
+          "tests/sampleImportData/entireDB.json"
+        );
         DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
           env: "test",
           isTestMode: true,
@@ -1066,7 +1074,9 @@ describe("DB: Exporting", () => {
         DB.registerEntity(EXTENDED_ENTITES.users);
         DB.registerEntity(EXTENDED_ENTITES.categories);
         DB.registerEntity(EXTENDED_ENTITES.comments);
-        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.importDataFromJSONFileForEntireDB(
+          "tests/sampleImportData/entireDB.json"
+        );
         DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
           env: "test",
           isTestMode: true,
@@ -1101,7 +1111,9 @@ describe("DB: Exporting", () => {
         DB.registerEntity(EXTENDED_ENTITES.users);
         DB.registerEntity(EXTENDED_ENTITES.categories);
         DB.registerEntity(EXTENDED_ENTITES.comments);
-        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.importDataFromJSONFileForEntireDB(
+          "tests/sampleImportData/entireDB.json"
+        );
         DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
           env: "test",
           isTestMode: true,
@@ -1140,7 +1152,9 @@ describe("DB: Exporting", () => {
         DB.registerEntity(EXTENDED_ENTITES.users);
         DB.registerEntity(EXTENDED_ENTITES.categories);
         DB.registerEntity(EXTENDED_ENTITES.comments);
-        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.importDataFromJSONFileForEntireDB(
+          "tests/sampleImportData/entireDB.json"
+        );
         DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
           env: "test",
           isTestMode: true,
@@ -1204,7 +1218,9 @@ describe("DB: Exporting", () => {
         DB.registerEntity(EXTENDED_ENTITES.users);
         DB.registerEntity(EXTENDED_ENTITES.categories);
         DB.registerEntity(EXTENDED_ENTITES.comments);
-        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.importDataFromJSONFileForEntireDB(
+          "tests/sampleImportData/entireDB.json"
+        );
         DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
           env: "test",
           isTestMode: true,
@@ -1237,7 +1253,9 @@ describe("DB: Exporting", () => {
         DB.registerEntity(EXTENDED_ENTITES.users);
         DB.registerEntity(EXTENDED_ENTITES.categories);
         DB.registerEntity(EXTENDED_ENTITES.comments);
-        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.importDataFromJSONFileForEntireDB(
+          "tests/sampleImportData/entireDB.json"
+        );
         DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
           env: "test",
           isTestMode: true,
@@ -1271,7 +1289,9 @@ describe("DB: Exporting", () => {
         DB.registerEntity(EXTENDED_ENTITES.users);
         DB.registerEntity(EXTENDED_ENTITES.categories);
         DB.registerEntity(EXTENDED_ENTITES.comments);
-        DB.importJSONFileForEntireDB("tests/sampleImportData/entireDB.json");
+        DB.importDataFromJSONFileForEntireDB(
+          "tests/sampleImportData/entireDB.json"
+        );
         DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
           env: "test",
           isTestMode: true,

@@ -30,11 +30,11 @@ Some important notes:
 
    - [Importing Data from JSON File](#2-importing-data-from-json-file)
 
-     - [Import Data Based on Entity (example)](#221-importing-data-based-on-entity-example)
+     - [Import Data Based on Entity (API)](#221-importing-data-based-on-entity-api)
 
      - [Import Data Based on Entity (JSON Structure)](#222-importing-data-based-on-entity-json-structure)
 
-     - [Import Data for Entire Database (example)](#231-importing-data-for-entire-database-example)
+     - [Import Data for Entire Database (API)](#231-importing-data-for-entire-database-api)
 
      - [Import Data for Entire Database (JSON Structure)](#232-importing-data-for-entire-database-json-structure)
 
@@ -191,19 +191,31 @@ Since this module wipes all data upon deploy, you can import exported JSON data 
 
 5. You can only choose to import data based on entity, OR import entire database (data for all entities), but not both.
 
-### 2.2.1 Importing Data Based on Entity: Example
+### 2.2.1 Importing Data Based on Entity: API
+
+Method: (async) `DB.importDataFromJSONFileForEntity(entity, pathToTheFile);`
+
+Arguments:
+
+- _entity_ : Registered entity name. Please use the `DB.getEntities()` method to avoid spelling mistakes.
+
+- _pathToTheFile_ : Path to your json file. Make sure to include the `.json` extension.
+
+Returns: void
+
+Example:
 
 ```javascript
 DB.registerEntity("categories");
 DB.registerEntity("comments");
 
 // add data import path
-DB.importJSONFileForEntity(
+DB.importDataFromJSONFileForEntity(
   DB.getEntities().categories,
   "test/pathToYourJSONfile/categories.json"
 );
 
-DB.importJSONFileForEntity(
+DB.importDataFromJSONFileForEntity(
   DB.getEntities().comments,
   "test/pathToYourJSONfile/comments.json"
 );
@@ -258,7 +270,17 @@ Example for `comments.json` :
 ]
 ```
 
-### 2.3.1 Importing Data for Entire Database: Example
+### 2.3.1 Importing Data for Entire Database: API
+
+Method: (async) `DB.importDataFromJSONFileForEntireDB(pathToTheFile);`
+
+Arguments:
+
+- _pathToTheFile_ : Path to your json file. Make sure to include the `.json` extension.
+
+Returns: void
+
+Example:
 
 ```javascript
 // register your entities
@@ -267,7 +289,7 @@ DB.registerEntity("categories");
 DB.registerEntity("comments");
 
 // import data for entire database
-DB.importJSONFileForEntireDB("tests/pathToYourJSONfile/entireDB.json");
+DB.importDataFromJSONFileForEntireDB("tests/pathToYourJSONfile/entireDB.json");
 
 // build
 DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
