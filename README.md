@@ -1,4 +1,4 @@
-# Refridgerator: a simple data store solution for Node JS (BETA)
+# Refridgerator: a simple data store for Node JS (BETA)
 
 > This module is currently under further testing. You may not want to install it just yet.
 
