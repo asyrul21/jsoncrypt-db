@@ -1,7 +1,7 @@
 {
   "name": "simple-db",
   "version": "1.0.0",
-  "description": "A simple, serverless, encrypted, and deploy-ready data storage module for Node JS",
+  "description": "A simple, lightweight, east-to-use, unstructured (no-sql), encrypted, and deploy-ready file-based data storage for Node JS",
   "main": "index.js",
   "scripts": {
     "test": "mocha tests/**/*.test.js",
@@ -19,7 +19,9 @@
     "serverless",
     "encrypted",
     "crypto",
-    "nosql"
+    "nosql",
+    "no-sql",
+    "file-based"
   ],
   "author": "Asyrul Ahmad",
   "license": "ISC",
