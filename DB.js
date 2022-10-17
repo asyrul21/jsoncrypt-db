@@ -1,7 +1,11 @@
 const DataReadWriter = require("./DataReadWriter");
 const fs = require("fs");
 const path = require("path");
-const { stringHasValue, objectHasMethod } = require("./utils");
+const {
+  stringHasValue,
+  objectHasMethod,
+  enrichDataWithDBProps,
+} = require("./utils");
 
 const BUFFER_ENCODING = "utf-8";
 const DEFAULT_ENTITY_EXPORT_FILENAME = (entity) => {
@@ -138,51 +142,12 @@ const moduleFn = (function () {
     }
   };
 
-  const validateDataObjectOnCreateForEntity = (entity, obj) => {
-    if (!obj) {
-      return false;
+  const validateObjParamForMethod = (obj, methodName) => {
+    if (!obj || typeof obj !== "object" || Object.keys(obj).length === 0) {
+      throw new Error(
+        `Invalid parameter [dataObject] provided for function [${methodName}].`
+      );
     }
-    const res = entities[entity].options.validateOnCreate(obj);
-    return res;
-  };
-
-  const validateDataObjectOnReadForEntity = (entity, obj) => {
-    if (!obj) {
-      return false;
-    }
-    return entities[entity].options.validateOnRead(obj);
-  };
-
-  const transformDataObjectOnCreateAndUpdateForEntity = (entity, obj) => {
-    if (!obj) {
-      return false;
-    }
-    const res = entities[entity].options.preSaveTransform(obj);
-    return res;
-  };
-
-  const enrichDataWithDBProps = (obj, mode = "create") => {
-    if (mode === "create") {
-      return {
-        ...obj,
-        createdAt: (function () {
-          const d = new Date();
-          return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        })(),
-        updatedAt: (function () {
-          const d = new Date();
-          return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        })(),
-      };
-    }
-    // for updates
-    return {
-      ...obj,
-      updatedAt: (function () {
-        const d = new Date();
-        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      })(),
-    };
   };
 
   return {
@@ -195,6 +160,10 @@ const moduleFn = (function () {
         DataReadWriter._resetAndDeleteAllData();
       }
     },
+    /**
+     *
+     * @returns An object with entityNames as keys and their respective string values as values.
+     */
     getEntities: function () {
       let result = {};
       if (entities && Object.keys(entities).length > 0) {
@@ -207,10 +176,22 @@ const moduleFn = (function () {
       }
       return result;
     },
+    /**
+     *
+     * @returns a boolean value; true if database has been setup, built and is currently storing data, false otherwise.
+     */
     isUp: function () {
       return isRunning();
     },
-    registerEntity: function (
+    /**
+     *
+     * @param {string}    entity - Should be a single string of a PLURAL word. eg. "categories"
+     * @param {Object}    [options] - (optional) Register entity options
+     * @param {string}    options.identifierKey - Default is "id".
+     * @param {function}  options.validateOnCreate - hook: a validation callback every time a new data object is created/updated. Default is a function that returns true.
+     * @param {function}  options.preSaveTransform - hook: a callback to perform transformations of data objects for that entity every time before it is created/updated in the data store.  Default is a function that returns the entity data object itself.
+     *
+     */ registerEntity: function (
       entity,
       options = {
         identifierKey: "id",
@@ -260,6 +241,10 @@ const moduleFn = (function () {
         };
       }
     },
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     */
     removeEntityAndDeleteEntityData: function (entity) {
       validateEntityForMethod(entity, "removeEntityAndDeleteEntityData");
       if (entity && Object.keys(entities).includes(entity)) {
@@ -269,6 +254,14 @@ const moduleFn = (function () {
         }
       }
     },
+    /**
+     *
+     * @param {string}  cryptoSecret - secret encryption message
+     * @param {string}  vectorSecret - another secret encryption message
+     * @param {Object}  [options] - Build Options
+     * @param {string}  options.env - Default is "dev".
+     * @param {boolean} options.isTestMode - Default is false.
+     */
     build: function (
       cryptoSecret,
       vectorSecret,
@@ -316,12 +309,19 @@ const moduleFn = (function () {
         throw new Error(error.message || error);
       }
     },
+    /**
+     *
+     * @returns The entire application's data.
+     */
     getEntireDatabase: function () {
       return entityDataMap;
     },
-    // force fetch allows clients to fetch data directly from database,
-    // bypassing data that has been changed in memory.
-    // this is generally for testing purposes only.
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     * @param {boolean} forceFetch - Allows clients to fetch data directly from database, bypassing data that has been changed in memory. This is generally for testing purposes only.
+     * @returns An array of data objects for that entity.
+     */
     findAllFor: async function (entity, forceFetch = false) {
       validateEntityForMethod(entity, "findAllFor");
       if (forceFetch) {
@@ -341,6 +341,12 @@ const moduleFn = (function () {
         return entityDataMap[entity];
       }
     },
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     * @param {string} id - The id of the data object to be retrieved.
+     * @returns An object with the specified ID. Throws error if not found.
+     */
     findByIdentifierFor: async function (entity, id) {
       validateEntityForMethod(entity, "findByIdentifierFor");
       let data;
@@ -364,6 +370,12 @@ const moduleFn = (function () {
         throw new Error(`DB for entity [${entity}] has no data.`);
       }
     },
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     * @param {function} filterCallback - A callback function for filtering specific fields with specific values.
+     * @returns An array of data objects that fulfills the filterCallback.
+     */
     findByFilterCallbackFor: async function (entity, filterFn = () => {}) {
       validateEntityForMethod(entity, "findByFilterCallbackFor");
       let data;
@@ -379,9 +391,16 @@ const moduleFn = (function () {
         throw new Error(`DB for entity [${entity}] has no data.`);
       }
     },
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     * @param {Object} obj - New data object to be added/created for that entity.
+     * @returns an updated array of data objects for that entity.
+     */
     createNewFor: async function (entity, obj) {
       validateEntityForMethod(entity, "createNewFor");
-      const validated = validateDataObjectOnCreateForEntity(entity, obj);
+      validateObjParamForMethod(obj, "createNewFor");
+      const validated = entities[entity].options.validateOnCreate(obj);
       if (validated) {
         let data;
         if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
@@ -391,10 +410,7 @@ const moduleFn = (function () {
           // FETCH
           data = await DataReadWriter.readAsync(entity);
         }
-        const newDataObj = transformDataObjectOnCreateAndUpdateForEntity(
-          entity,
-          obj
-        );
+        const newDataObj = entities[entity].options.preSaveTransform(obj);
         data.push(enrichDataWithDBProps(newDataObj, "create"));
         // UPDATE MEMORY
         entityDataMap[entity] = [...data];
@@ -404,6 +420,12 @@ const moduleFn = (function () {
         throw new Error("Invalid or no data to create.");
       }
     },
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     * @param {Object[]} objDataArray - A list/array of new data objects to be added/created for that entity.
+     * @returns an updated array of data objects for that entity.
+     */
     createManyNewFor: async function (entity, objDataArray) {
       validateEntityForMethod(entity, "createNewFor");
       if (!objDataArray || objDataArray.length < 1) {
@@ -416,12 +438,9 @@ const moduleFn = (function () {
         data = await DataReadWriter.readAsync(entity);
       }
       objDataArray.forEach((obj) => {
-        const validated = validateDataObjectOnCreateForEntity(entity, obj);
+        const validated = entities[entity].options.validateOnCreate(obj);
         if (obj && validated) {
-          const newDataObj = transformDataObjectOnCreateAndUpdateForEntity(
-            entity,
-            obj
-          );
+          const newDataObj = entities[entity].options.preSaveTransform(obj);
           data.push(enrichDataWithDBProps(newDataObj, "create"));
         }
       });
@@ -430,6 +449,13 @@ const moduleFn = (function () {
       // RETURN
       return entityDataMap[entity];
     },
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     * @param {string} id - The id of the data object to be updated.
+     * @param {Object} newData - An object containing the key - value pairs of which fields to update and with what values.
+     * @returns an updated array of data objects for that entity.
+     */
     updateFor: async function (entity, id, newData) {
       validateEntityForMethod(entity, "updateFor");
       if (!id || !newData) {
@@ -457,16 +483,11 @@ const moduleFn = (function () {
               updatedData[k] = newData[k];
             }
           });
-          const validated = validateDataObjectOnCreateForEntity(
-            entity,
-            updatedData
-          );
+          const validated =
+            entities[entity].options.validateOnCreate(updatedData);
           if (validated) {
             const transformedData =
-              transformDataObjectOnCreateAndUpdateForEntity(
-                entity,
-                updatedData
-              );
+              entities[entity].options.preSaveTransform(updatedData);
             const enrichedData = enrichDataWithDBProps(
               transformedData,
               "update"
@@ -490,6 +511,12 @@ const moduleFn = (function () {
         throw new Error(`DB for entity [${entity}] has no data.`);
       }
     },
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     * @param {string} id - The id of the data object to be updated.
+     * @returns an updated array of data objects for that entity.
+     */
     deleteFor: async function (entity, id) {
       validateEntityForMethod(entity, "deleteFor");
       if (!id) {
@@ -520,6 +547,10 @@ const moduleFn = (function () {
         throw new Error(`DB for entity [${entity}] has no data.`);
       }
     },
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     */
     saveFor: async function (entity) {
       validateEntityForMethod(entity, "saveFor");
       try {
@@ -542,6 +573,11 @@ const moduleFn = (function () {
         throw new Error(error.message || error);
       }
     },
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     * @param {string} filePath - Path to your json file. Make sure to include the .json extension.
+     */
     importDataFromJSONFileForEntity: function (entity, filePath) {
       validateEntityForMethod(entity, "importDataFromJSONFileForEntity");
       if (this.isUp()) {
@@ -577,6 +613,10 @@ const moduleFn = (function () {
         throw new Error(error.message || error);
       }
     },
+    /**
+     *
+     * @param {string} filePath - Path to your json file. Make sure to include the .json extension.
+     */
     importDataFromJSONFileForEntireDB: function (filePath) {
       if (this.isUp()) {
         throw new Error(
@@ -611,6 +651,12 @@ const moduleFn = (function () {
         throw new Error(error.message || error);
       }
     },
+    /**
+     *
+     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     * @param {string} folderPath - Path to the folder you want to export the data to.
+     * @param {string} [filename] - (optional) The name of the file you want to save the exported data to. Default is: db_export_${entity}.json
+     */
     exportDataToJSONForEntity: function (entity, folderPath, filename = null) {
       validateEntityForMethod(entity, "exportDataToJSONForEntity");
       if (!folderPath) {
@@ -639,7 +685,7 @@ const moduleFn = (function () {
             "Invalid file extension. Exports are only writable to JSON files."
           );
         }
-        // create fil
+        // create file
         fs.writeFileSync(`${path.resolve(folderPath, basename)}`, dataStr, {
           encoding: BUFFER_ENCODING,
         });
@@ -651,6 +697,11 @@ const moduleFn = (function () {
         throw new Error(error.message || error);
       }
     },
+    /**
+     *
+     * @param {string} folderPath - Path to the folder you want to export the data to.
+     * @param {string} [filename] - (optional) filename: The name of the file you want to save the exported data to. Default is: db_export_all.json
+     */
     exportEntireDatabaseToJSON: function (folderPath, filename = null) {
       if (!folderPath) {
         throw new Error(
@@ -677,7 +728,7 @@ const moduleFn = (function () {
             "Invalid file extension. Exports are only writable to JSON files."
           );
         }
-        // create fil
+        // create file
         fs.writeFileSync(`${path.resolve(folderPath, basename)}`, dataStr, {
           encoding: BUFFER_ENCODING,
         });

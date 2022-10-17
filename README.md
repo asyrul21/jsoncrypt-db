@@ -34,7 +34,7 @@ Some important notes:
 
      - [Import Data Based on Entity (JSON Structure)](#222-importing-data-based-on-entity-json-structure)
 
-     - [Import Data for Entire Database (API)](#231-importing-data-for-entire-database-api)
+     - [Import Data for Entire Database (API)](#231-importing-data-for-entire-database-apireturns true of database has been setup, built and is currently storing data)
 
      - [Import Data for Entire Database (JSON Structure)](#232-importing-data-for-entire-database-json-structure)
 
@@ -46,7 +46,7 @@ Some important notes:
 
      - [Data Retrieval: Single data object by ID](#data-retrieval-single-data-object-by-id)
 
-     - [Data Retrieval: Single data object using a Filter Callback](#data-retrieval-single-data-object-using-a-filter-callback)
+     - [Data Retrieval: (array of) data objects using a Filter Callback](#data-retrieval-array-of-data-objects-using-a-filter-callback)
 
    - Data Manipulation
 
@@ -149,7 +149,7 @@ When [registering your entity](#1-registering-your-entities), you can provide op
   });
   ```
 
-- _validateOnCreate_ : (Hook) A function you can provide to perform validations every time when new data for that entity is added/created. Default is a function that returns `true`.
+- _validateOnCreate_ : (Hook) A function you can provide to perform validations every time when new data for that entity is created and updated. Default is a function that returns `true`.
 
   ```javascript
   DB.registerEntity("categories", {
@@ -366,11 +366,13 @@ const data = await DB.findAllFor(DB.getEntities().categories);
 
 ## Data Retrieval: Single Data Object by ID
 
-Method: (async) `DB.findByIdentifierFor(entity)`
+Method: (async) `DB.findByIdentifierFor(entity, dataId)`
 
 Arguments:
 
 - _entity_ : Registered entity name. Please use the `DB.getEntities()` method to avoid spelling mistakes.
+
+- _dataId_ : The id of the data object to be retrieved.
 
 Returns: An object with the specified ID. Throws error if not found.
 
@@ -381,7 +383,7 @@ const category = await DB.findByIdentifierFor(
 );
 ```
 
-## Data Retrieval: Single Data Object using a Filter Callback
+## Data Retrieval: (Array of) Data Objects using a Filter Callback
 
 Method: (async) `DB.findByFilterCallbackFor(entity, filterCallback)`
 
@@ -391,7 +393,7 @@ Arguments:
 
 - _filterCallback_ : A callback function for filtering specific fields with specific values.
 
-Returns: An object with the specified ID. Throws error if not found.
+Returns: An array of data objects that fulfills the filterCallback.
 
 ```javascript
 const category2 = await DB.findByFilterCallbackFor(
@@ -432,7 +434,7 @@ Arguments:
 
 - _entity_ : Registered entity name. Please use the `DB.getEntities()` method to avoid spelling mistakes.
 
-- _data_ : A list/array with wew data objects to be added/created for that entity.
+- _data_ : A list/array with new data objects to be added/created for that entity.
 
 Returns: Updated array of data for that entity.
 
@@ -540,7 +542,7 @@ Arguments:
 
 - _directoryPath_ : Path to the folder you want to export the data to.
 
-- (optional) filename: The name of the file you want to save the exported data to. Default is: `db_export_${entity}.json`
+- (optional) filename: The name of the file you want to save the exported data to. Default is: `db_export_all.json`
 
 Returns: void
 
@@ -593,7 +595,7 @@ try {
 
    Returns: boolean
 
-   Description: This method returns true of database has been setup, built and is currently storing data.
+   Description: This method returns true if database has been setup, built and is currently storing data.
 
 4. Method: (sync) `DB.removeEntityAndDeleteEntityData(entityName)`
 
