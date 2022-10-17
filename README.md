@@ -1,5 +1,7 @@
 # Simple DB for Node JS (BETA)
 
+> This module is currently under further testing. You may not want to install it just yet.
+
 This module presents a simple, serverless, encrypted, and deploy-ready data storage for Node JS. It has only 1 dependency, and allows clients to implement data persistent application without having to think about what database to use (mongo/my-sql/sql server/oracle db etc.), where, and how to deploy them. You can implement it either within your server/backend application, or even deploy it on its own as a service.
 
 Some important notes:
@@ -14,7 +16,7 @@ Some important notes:
 
 > IMPORTANT: This module does not support automatic data backup, and all data will be wiped upon re-deploy. To keep your data, you would have to manually export existing entity data or entire database as a JSON file (See: [Data Exporting By Entity](#data-exporting-by-entity) and [Data Exporting for Entire Database](#data-exporting-for-entire-database)), then import that file upon your next deploy session (See [Importing Data from JSON File](#2-importing-data-from-json-file)).
 
-> This module also does NOT handle identifier keys, hence you need to use your own techniques/libraries such `uuid`.
+> IMPORTANT: This module also does NOT handle identifier keys, hence you need to use your own techniques/libraries such `uuid`.
 
 # Table of Contents
 
@@ -553,7 +555,7 @@ try {
 
    Returns: An object with entity names as keys, and their respective names in string values as values.
 
-   Description: This method be used at every place an entity name is expected. (except for `registerEntity`)
+   Description: This method should be used at every place an entity name is expected. (except for `registerEntity`)
 
 2. Method: (sync) `DB._resetDBAndDeleteAllData()`
 
