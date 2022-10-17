@@ -1,22 +1,78 @@
-# Simple DB fro Node JS
+# Simple DB for Node JS (BETA)
 
-This module presents a simple, serverless, encrypted, and deploy-ready data storage for Node JS. It stores essentially JSON data, but they are encrypted, hence enabling clients to push and pull relatively sensitive data (such as your name, address, where you studied, where you work etc.) to source control platforms such as git. That being said, do NOT use this module if your app stores critically sensitive data, such as Credit Card information and governmental idenfication information.
+This module presents a simple, serverless, encrypted, and deploy-ready data storage for Node JS. It has only 1 dependency, and allows clients to implement data persistent application without having to think about what database to use (mongo/my-sql/sql server/oracle db etc.), where, and how to deploy them. You can implement it either within your server/backend application, or even deploy it on its own as a service.
 
-It has only 1 dependency, and allows clients to implement deploy-ready data persistent application without having to think about what database to use (mongo/my-sql/sql server/oracle db etc.), where, and how to deploy them. It resides just next to your server application (nodeJS).
+Some important notes:
 
-This data store module fits well if your app:
+1. This module does not support modern/cloud-based Availability features such as cross-region duplication, sharding, etc.
 
-1. is written in NodeJS
+2. It is suitable if your app is fairly simple and hypothetically will not store very huge amounts of data.
 
-2. is relatively simple and does not need Availability features such as cross-region duplication, sharding, etc.
+3. This module does not support automatic and scheduled backup.
 
-3. Hypothetically will not store very huge amount of data
+4. Although the data is encrypted, the authors do not recommend using this module if you work with critical / sensitive data such as Credit Card information and governmental idenfication information.
 
-4. Do not need automatic/scheduled backup
+> IMPORTANT: This module does not support automatic data backup, and all data will be wiped upon re-deploy. To keep your data, you would have to manually export existing entity data or entire database as a JSON file (See: [Data Exporting By Entity](#data-exporting-by-entity) and [Data Exporting for Entire Database](#data-exporting-for-entire-database)), then import that file upon your next deploy session (See [Importing Data from JSON File](#2-importing-data-from-json-file)).
 
-5. Does not work with critical / sensitive data such as Credit Card information and governmental idenfication information.
+> This module also does NOT handle identifier keys, hence you need to use your own techniques/libraries such `uuid`.
 
-> IMPORTANT: This module does not support automatic data backup, and all data will be wiped upon re-deploy. To keep your data, you would have to manually export existing entity data or entire database as a JSON file, then import that file upon your next deploy session (See Advanced Setup section below).
+# Table of Contents
+
+1. [Installation](#installation)
+
+2. [Basic Setup](#basic-setup)
+
+3. [Advanced Setup](#advanced-setup)
+
+   - [Register Entity Options and Hooks](#1-register-entity-options)
+
+   - [Importing Data from JSON File](#2-importing-data-from-json-file)
+
+     - [Import Data Based on Entity (example)](#221-importing-data-based-on-entity-example)
+
+     - [Import Data Based on Entity (JSON Structure)](#222-importing-data-based-on-entity-json-structure)
+
+     - [Import Data for Entire Database (example)](#231-importing-data-for-entire-database-example)
+
+     - [Import Data for Entire Database (JSON Structure)](#232-importing-data-for-entire-database-json-structure)
+
+4. [Usage and API](#usage-and-api)
+
+   - Data Retrieval
+
+     - [Data Retrieval: All data for an entity](#data-retrieval-all-data-for-entity)
+
+     - [Data Retrieval: Single data object by ID](#data-retrieval-single-data-object-by-id)
+
+     - [Data Retrieval: Single data object using a Filter Callback](#data-retrieval-single-data-object-using-a-filter-callback)
+
+   - Data Manipulation
+
+     - [Data Creation: Single](#data-creation-single)
+
+     - [Data Creation: Many](#data-creation-many)
+
+     - [Data Updates](#data-updates)
+
+     - [Data Deletion](#data-deletion)
+
+     - [Data Saving](#data-saving)
+
+   - Data Exporting
+
+     - [Data Exporting By Entity](#data-exporting-by-entity)
+
+     - [Data Exporting for Entire Database](#data-exporting-for-entire-database)
+
+5. [Error Handling](#error-handling)
+
+6. [Other API Methods](#other-api-methods)
+
+7. [References](#references)
+
+# Installation
+
+PLEASE DO NOT INSTALL THIS YET, as it is still under testing.
 
 # Basic Setup
 
@@ -30,13 +86,7 @@ Arguments:
 
 - _entityName_ : must be a string of a SINGLE PLURAL WORD. eg. "categories"
 
-- _options_ : So far this has three keys you can override:
-
-  - _identifierKey_ : The primary key field of your entity. Default is "id"
-
-  - _validateOnCreate_ : (Hook) A function you can provide to perform validations new data for that entity is added/created. Default is a function that returns `true`.
-
-  - _preSaveTransform_ : (Hook) A function you can provide to perform transformations of data objects for that entity before it is created/updated in the data store. This is useful if you want to perform password encryption for user entity, before it is being created/updated. Default is a function that returns the entity data object itself.
+- _options_ : See [Register Entity Options and Hooks](#1-register-entity-options)
 
 > After registering your entities, you can now access them with the method `DB.getEntities()`. This helps to avoid spelling mistakes when using the module.
 
@@ -66,15 +116,7 @@ const DB = require("simple-db");
 
 // 1. register your entities - it should be a string of ONE plural word
 DB.registerEntity("categories");
-DB.registerEntity("comments", {
-  identifierKey: "key", // default is "id"
-  validateOnCreate: (dataObj) => {
-    return true;
-  },
-  preSaveTransform: (dataObj) => {
-    return { ...dataObj };
-  },
-});
+DB.registerEntity("comments");
 
 /* You can now reference your categories with DB.getCategories()
  *  Eg. DB.getEntities().categories
@@ -87,25 +129,67 @@ const VECTOR_SECRET = "vectorSecret";
 
 // 2. build
 DB.build(SAMPLE_SECRET, VECTOR_SECRET, {
-  env: "dev",
+  env: "dev", // or process.env.environment or something
 });
 ```
 
 # Advanced Setup
 
-## 1. Importing Data from JSON file
+## 1. Register Entity Options
+
+When [registering your entity](#1-registering-your-entities), you can provide options as the second parameter. The options object has three keys you can override:
+
+- _identifierKey_ : The primary key field of your entity. Default is "id". If your entity uses any other field such as _\_id_ or _key_, please specifiy it here.
+
+  ```javascript
+  DB.registerEntity("categories", {
+    identifierKey: "key",
+  });
+  ```
+
+- _validateOnCreate_ : (Hook) A function you can provide to perform validations every time when new data for that entity is added/created. Default is a function that returns `true`.
+
+  ```javascript
+  DB.registerEntity("categories", {
+    validateOnCreate: (dataObj) => {
+      if (!dataObj.name || dataObj.name === "") {
+        return false;
+      }
+
+      // make sure to return true at the end
+      return true;
+    },
+  });
+  ```
+
+- _preSaveTransform_ : (Hook) A function you can provide to perform transformations of data objects for that entity every time before it is created/updated in the data store. This is useful if you want to perform password encryption for user entity, before it is being created/updated. Default is a function that returns the entity data object itself.
+
+  ```javascript
+  DB.registerEntity("users", {
+    preSaveTransform: (dataObj) => {
+      return {
+        ...dataObj,
+        password: encryptPassword(dataObj.password),
+      };
+    },
+  });
+  ```
+
+## 2. Importing Data from JSON file
 
 Since this module wipes all data upon deploy, you can import exported JSON data before building. A few important notes:
 
 1. It must be a JSON file, and must conform to a valid structure.
 
-2. Your JSON file must have encoding of utf-8
+2. Your JSON file must have encoding of utf-8.
 
-3. Data imports must be done AFTER you have registered your entities, and BEFORE building.
+3. To ensure seamless integration, use our Export methods ([Data Exporting By Entity](#data-exporting-by-entity) and [Data Exporting for Entire Database](#data-exporting-for-entire-database)) to guarrantee a valid json strucutre.
 
-4. You can only choose to import data based on entity, OR import entire database (data for all entities), but not both.
+4. Data imports must be done AFTER you have registered your entities, and BEFORE building.
 
-### 1.2.1 Importing Data Based on Entity: Example
+5. You can only choose to import data based on entity, OR import entire database (data for all entities), but not both.
+
+### 2.2.1 Importing Data Based on Entity: Example
 
 ```javascript
 DB.registerEntity("categories");
@@ -127,7 +211,7 @@ DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
 });
 ```
 
-### 1.2.2 Importing Data Based on Entity: JSON Structure
+### 2.2.2 Importing Data Based on Entity: JSON Structure
 
 For importing data based on entity, your JSON must be a LIST/ARRAY of entity objects. General structure:
 
@@ -172,7 +256,7 @@ Example for `comments.json` :
 ]
 ```
 
-### 1.3.1 Importing Data for Entire Database: Example
+### 2.3.1 Importing Data for Entire Database: Example
 
 ```javascript
 // register your entities
@@ -189,7 +273,7 @@ DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, {
 });
 ```
 
-### 1.3.2 Importing Data for Entire Database: JSON Structure
+### 2.3.2 Importing Data for Entire Database: JSON Structure
 
 Your JSON must be one single object. The keys should be the entity names, and their values should be a list/array of entity objects. General strucure:
 
@@ -238,7 +322,7 @@ Example for `entireDB.json` :
 }
 ```
 
-# Usage
+# Usage and API
 
 This module does NOT handle identifier keys, hence you need to use your own techniques/libraries such `uuid`.
 
@@ -292,20 +376,6 @@ const category2 = await DB.findByFilterCallbackFor(
     return obj.name === "category 2";
   }
 );
-```
-
-## Data Retrieval: Entire Database
-
-Method: (sync) `DB.getEntireDatabase()`
-
-Arguments: none
-
-Returns: The entire app's data.
-
-> This method may be expensive and is normally used during unit testing. Clients should avoid using this method.
-
-```javascript
-const allData = DB.getEntireDatabase();
 ```
 
 ## Data Creation: Single
@@ -474,6 +544,50 @@ try {
   // process your errors
 }
 ```
+
+# Other API Methods
+
+1. Method: (sync) `DB.getEntities()`
+
+   Arguments: none
+
+   Returns: An object with entity names as keys, and their respective names in string values as values.
+
+   Description: This method be used at every place an entity name is expected. (except for `registerEntity`)
+
+2. Method: (sync) `DB._resetDBAndDeleteAllData()`
+
+   Arguments: none
+
+   Returns: void
+
+   Description: This method is meant for testing purposes only. Clients should avoid using it.
+
+3. Method: (sync) `DB.isUp()`
+
+   Arguments: none
+
+   Returns: boolean
+
+   Description: This method returns true of database has been setup, built and is currently storing data.
+
+4. Method: (sync) `DB.removeEntityAndDeleteEntityData(entityName)`
+
+   Arguments:
+
+   - entityName: The name of the entity
+
+   Returns: void
+
+   Description: This method is meant for testing purposes only. Clients should avoid using it.
+
+5. Method: (sync) `DB.getEntireDatabase()`
+
+   Arguments: none
+
+   Returns: The entire app's data.
+
+   Description: This method may be expensive and is normally used during unit testing. Clients should avoid using this method.
 
 # References
 
