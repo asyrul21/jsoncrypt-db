@@ -676,7 +676,7 @@ describe("DB: Entity Option Hooks", () => {
     );
   });
 
-  it("should retrieve data by identifier successfully using the hook:identifierKey", async () => {
+  it("should retrieve data by identifier successfully when using hook:identifierKey", async () => {
     const SAMPLE_CATEGORIES_DATA_ALT = [
       {
         key: "123",
@@ -714,8 +714,7 @@ describe("DB: Entity Option Hooks", () => {
       // retrieve
       result = await DB.findByIdentifierFor(
         DB.getEntities().categories,
-        SAMPLE_CATEGORIES_DATA_ALT[2].key,
-        true
+        SAMPLE_CATEGORIES_DATA_ALT[2].key
       );
       forcedFetchedData = await DB.findAllFor(
         DB.getEntities().categories,
@@ -730,6 +729,61 @@ describe("DB: Entity Option Hooks", () => {
     assert.deepStrictEqual(
       transformDataObjectWithMockDates(result),
       transformDataObjectWithMockDates(SAMPLE_CATEGORIES_DATA_ALT[2])
+    );
+    assert.deepStrictEqual(
+      transformDataArrayWithMockDates(forcedFetchedData),
+      transformDataArrayWithMockDates(inMemory)
+    );
+    DB._resetDBAndDeleteAllData();
+  });
+
+  it("should transform data successfully when using hook:preSaveTransform", async () => {
+    const SAMPLE_NEW_USER = {
+      id: "123",
+      username: "John Marston",
+      password: "myTestPassword",
+    };
+
+    const mockEncryptPassword = (p) => {
+      return `abcdef-${p}-abcdef`;
+    };
+
+    const expectedTransformed = {
+      id: "123",
+      username: "John Marston",
+      password: "abcdef-myTestPassword-abcdef",
+    };
+
+    let error = null;
+    let result = null;
+    let inMemory;
+    let forcedFetchedData;
+    DB.registerEntity("users", {
+      preSaveTransform: (dataObj) => {
+        return {
+          ...dataObj,
+          password: mockEncryptPassword(dataObj.password),
+        };
+      },
+    });
+
+    DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
+    try {
+      inMemory = await DB.createNewFor(DB.getEntities().users, SAMPLE_NEW_USER);
+      await DB.saveFor(DB.getEntities().users);
+
+      // retrieve
+      result = await DB.findByIdentifierFor(DB.getEntities().users, "123");
+      forcedFetchedData = await DB.findAllFor(DB.getEntities().users, true);
+    } catch (e) {
+      console.log(e);
+      error = e;
+    }
+
+    assert.equal(error, null);
+    assert.deepStrictEqual(
+      transformDataObjectWithMockDates(result),
+      transformDataObjectWithMockDates(expectedTransformed)
     );
     assert.deepStrictEqual(
       transformDataArrayWithMockDates(forcedFetchedData),
