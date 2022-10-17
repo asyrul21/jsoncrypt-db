@@ -34,7 +34,7 @@ Some important notes:
 
      - [Import Data Based on Entity (JSON Structure)](#222-importing-data-based-on-entity-json-structure)
 
-     - [Import Data for Entire Database (API)](#231-importing-data-for-entire-database-apireturns true of database has been setup, built and is currently storing data)
+     - [Import Data for Entire Database (API)](#231-importing-data-for-entire-database-api)
 
      - [Import Data for Entire Database (JSON Structure)](#232-importing-data-for-entire-database-json-structure)
 
