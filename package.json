@@ -1,7 +1,7 @@
 {
   "name": "refridgerator",
   "version": "1.0.2",
-  "description": "A simple, lightweight, east-to-use, unstructured (no-sql), encrypted, and deploy-ready file-based data storage for Node JS",
+  "description": "A simple, east-to-use, encrypted, flexible, and production-ready file-based data storage for NodeJS applications.",
   "main": "index.js",
   "scripts": {
     "test": "mocha tests/**/*.test.js",
@@ -12,6 +12,8 @@
     "db",
     "database",
     "storage",
+    "data",
+    "store",
     "engine",
     "simple",
     "node",
@@ -21,7 +23,9 @@
     "crypto",
     "nosql",
     "no-sql",
-    "file-based"
+    "file-based",
+    "easy",
+    "prototype"
   ],
   "author": "Asyrul Ahmad",
   "license": "ISC",
@@ -32,8 +36,8 @@
     "mocha": "^10.0.0",
     "nyc": "^15.1.0"
   },
-  "homepage": "https://github.com/asyrul21/refridgerator-db",
+  "homepage": "https://github.com/asyrul21/jsoncrypt-db",
   "repository": {
-    "url": "https://github.com/asyrul21/refridgerator-db"
+    "url": "https://github.com/asyrul21/jsoncrypt-db"
   }
 }
