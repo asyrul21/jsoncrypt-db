@@ -319,27 +319,31 @@ const moduleFn = (function () {
     /**
      *
      * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
+     * @param {function} filterCallback - A callback function for filtering specific fields with specific values.
      * @param {boolean} forceFetch - Allows clients to fetch data directly from database, bypassing data that has been changed in memory. This is generally for testing purposes only.
      * @returns An array of data objects for that entity.
      */
-    findAllFor: async function (entity, forceFetch = false) {
+    findFor: async function (
+      entity,
+      filterCallback = null,
+      forceFetch = false
+    ) {
       validateEntityForMethod(entity, "findAllFor");
+      const filterCbProvided =
+        filterCallback && typeof filterCallback === "function";
       if (forceFetch) {
         // DO NOT store force fetched data in the map!
         // this will cause overriding unsaved changes, hence data loss!
         const data = await DataReadWriter.readAsync(entity);
-        return data;
+        return filterCbProvided ? data?.filter(filterCallback) : data;
       }
+      let data;
       if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
-        // data exist in memory
-        return entityDataMap[entity];
+        data = entityDataMap[entity];
       } else {
-        // fetch
-        const data = await DataReadWriter.readAsync(entity);
-        // update data map
-        entityDataMap[entity] = data;
-        return entityDataMap[entity];
+        data = await DataReadWriter.readAsync(entity);
       }
+      return filterCbProvided ? data.filter(filterCallback) : data;
     },
     /**
      *
@@ -366,27 +370,6 @@ const moduleFn = (function () {
         } else {
           throw new Error("Invalid or no data with given identifier.");
         }
-      } else {
-        throw new Error(`DB for entity [${entity}] has no data.`);
-      }
-    },
-    /**
-     *
-     * @param {string} entity - The name of a registered entity. Please use the .getEntities() method to avoid spelling mistakes.
-     * @param {function} filterCallback - A callback function for filtering specific fields with specific values.
-     * @returns An array of data objects that fulfills the filterCallback.
-     */
-    findByFilterCallbackFor: async function (entity, filterFn = () => {}) {
-      validateEntityForMethod(entity, "findByFilterCallbackFor");
-      let data;
-      if (entityDataMap && Object.keys(entityDataMap).includes(entity)) {
-        data = entityDataMap[entity];
-      } else {
-        data = await DataReadWriter.readAsync(entity);
-      }
-      if (data.length > 0) {
-        const foundItems = data.filter(filterFn);
-        return foundItems;
       } else {
         throw new Error(`DB for entity [${entity}] has no data.`);
       }

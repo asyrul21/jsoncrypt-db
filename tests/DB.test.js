@@ -216,7 +216,7 @@ describe("DB: Building", () => {
     let data;
     try {
       DB.build(SAMPLE_SECRET, SAMPLE_VECTOR, { env: "test", isTestMode: true });
-      data = await DB.findAllFor(DB.getEntities().categories);
+      data = await DB.findFor(DB.getEntities().categories);
     } catch (e) {
       console.log(e);
       error = e;
@@ -227,7 +227,7 @@ describe("DB: Building", () => {
   });
 });
 
-describe("DB: Creating, findAllFor, and Saving Data", () => {
+describe("DB: Creating, findFor, and Saving Data", () => {
   beforeEach(() => {
     DB._resetDBAndDeleteAllData();
   });
@@ -273,7 +273,11 @@ describe("DB: Creating, findAllFor, and Saving Data", () => {
         sampleData3
       );
 
-      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+      forceFetchedData = await DB.findFor(
+        DB.getEntities().categories,
+        null,
+        true
+      );
     } catch (e) {
       console.log(e);
       error = e;
@@ -310,7 +314,11 @@ describe("DB: Creating, findAllFor, and Saving Data", () => {
 
       // save
       await DB.saveFor(DB.getEntities().categories);
-      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+      forceFetchedData = await DB.findFor(
+        DB.getEntities().categories,
+        null,
+        true
+      );
     } catch (e) {
       console.log(e);
       error = e;
@@ -363,12 +371,14 @@ describe("DB: Creating, findAllFor, and Saving Data", () => {
 
       // save all
       await DB.saveAll();
-      forceFetchedCategoriesData = await DB.findAllFor(
+      forceFetchedCategoriesData = await DB.findFor(
         DB.getEntities().categories,
+        null,
         true
       );
-      forceFetchedCommentsData = await DB.findAllFor(
+      forceFetchedCommentsData = await DB.findFor(
         DB.getEntities().comments,
+        null,
         true
       );
     } catch (e) {
@@ -413,7 +423,11 @@ describe("DB: Creating, findAllFor, and Saving Data", () => {
       );
 
       await DB.saveFor(DB.getEntities().categories);
-      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+      forceFetchedData = await DB.findFor(
+        DB.getEntities().categories,
+        null,
+        true
+      );
     } catch (e) {
       console.log(e);
       error = e;
@@ -482,12 +496,9 @@ describe("DB: Retrieving and Saving Data", () => {
       await DB.saveFor(DB.getEntities().categories);
 
       // retrieve
-      result = await DB.findByFilterCallbackFor(
-        DB.getEntities().categories,
-        (obj) => {
-          return obj.name === "category 2";
-        }
-      );
+      result = await DB.findFor(DB.getEntities().categories, (obj) => {
+        return obj.name === "category 2";
+      });
     } catch (e) {
       console.log(e);
       error = e;
@@ -540,7 +551,11 @@ describe("DB: Updating and Saving Data", () => {
       );
       await DB.saveFor(DB.getEntities().categories);
 
-      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+      forceFetchedData = await DB.findFor(
+        DB.getEntities().categories,
+        null,
+        true
+      );
     } catch (e) {
       console.log(e);
       error = e;
@@ -591,7 +606,11 @@ describe("DB: Deleting and Saving Data", () => {
       );
       await DB.saveFor(DB.getEntities().categories);
 
-      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+      forceFetchedData = await DB.findFor(
+        DB.getEntities().categories,
+        null,
+        true
+      );
     } catch (e) {
       console.log(e);
       error = e;
@@ -659,7 +678,11 @@ describe("DB: Entity Option Hooks", () => {
       );
       // save
       await DB.saveFor(DB.getEntities().categories);
-      forceFetchedData = await DB.findAllFor(DB.getEntities().categories, true);
+      forceFetchedData = await DB.findFor(
+        DB.getEntities().categories,
+        null,
+        true
+      );
     } catch (e) {
       console.log(e);
       validateTrueError = e;
@@ -716,8 +739,9 @@ describe("DB: Entity Option Hooks", () => {
         DB.getEntities().categories,
         SAMPLE_CATEGORIES_DATA_ALT[2].key
       );
-      forcedFetchedData = await DB.findAllFor(
+      forcedFetchedData = await DB.findFor(
         DB.getEntities().categories,
+        null,
         true
       );
     } catch (e) {
@@ -774,7 +798,7 @@ describe("DB: Entity Option Hooks", () => {
 
       // retrieve
       result = await DB.findByIdentifierFor(DB.getEntities().users, "123");
-      forcedFetchedData = await DB.findAllFor(DB.getEntities().users, true);
+      forcedFetchedData = await DB.findFor(DB.getEntities().users, null, true);
     } catch (e) {
       console.log(e);
       error = e;
@@ -827,9 +851,10 @@ describe("DB: Importing", () => {
           isTestMode: true,
         });
 
-        inMemory = await DB.findAllFor(DB.getEntities().categories);
-        forcedFetchedData = await DB.findAllFor(
+        inMemory = await DB.findFor(DB.getEntities().categories);
+        forcedFetchedData = await DB.findFor(
           DB.getEntities().categories,
+          null,
           true
         );
       } catch (e) {
@@ -966,12 +991,16 @@ describe("DB: Importing", () => {
         });
 
         inMemory = DB.getEntireDatabase();
-        forcedFetchedCategories = await DB.findAllFor(
+        forcedFetchedCategories = await DB.findFor(
           DB.getEntities().categories,
           true
         );
-        forcedFetchedUsers = await DB.findAllFor(DB.getEntities().users, true);
-        forcedFetchedComments = await DB.findAllFor(
+        forcedFetchedUsers = await DB.findFor(
+          DB.getEntities().users,
+          null,
+          true
+        );
+        forcedFetchedComments = await DB.findFor(
           DB.getEntities().comments,
           true
         );

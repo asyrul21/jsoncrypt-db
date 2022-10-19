@@ -42,11 +42,9 @@ Some important notes:
 
    - Data Retrieval
 
-     - [Data Retrieval: All data for an entity](#data-retrieval-all-data-for-entity)
+     - [Data Retrieval: All data for an entity](#data-retrieval-array-of-data-objects-for-an-entity)
 
      - [Data Retrieval: Single data object by ID](#data-retrieval-single-data-object-by-id)
-
-     - [Data Retrieval: (array of) data objects using a Filter Callback](#data-retrieval-array-of-data-objects-using-a-filter-callback)
 
    - Data Manipulation
 
@@ -350,18 +348,25 @@ Example for `entireDB.json` :
 
 This module does NOT handle identifier keys, hence you need to use your own techniques/libraries such `uuid`.
 
-## Data Retrieval: All data for Entity
+## Data Retrieval: Array of Data Objects for an Entity
 
-Method: (async) `DB.findAllFor(entity)`
+Method: (async) `DB.findFor(entity, filterCallback = null)`
 
 Arguments:
 
 - _entity_ : Registered entity name. Please use the `DB.getEntities()` method to avoid spelling mistakes.
 
-Returns: An array of data objects for that entity.
+- _filterCallback_ : (optional) A callback function for filtering specific fields with specific values.
+
+Returns: An array of (filtered or not) data objects for that entity.
 
 ```javascript
-const data = await DB.findAllFor(DB.getEntities().categories);
+// retrieve all
+const data = await DB.findFor(DB.getEntities().categories);
+// retrieve based on filter
+const data = await DB.findFor(DB.getEntities().categories, (obj) => {
+  return obj.name === "category 2";
+});
 ```
 
 ## Data Retrieval: Single Data Object by ID
@@ -380,27 +385,6 @@ Returns: An object with the specified ID. Throws error if not found.
 const category = await DB.findByIdentifierFor(
   DB.getEntities().categories,
   "4321"
-);
-```
-
-## Data Retrieval: (Array of) Data Objects using a Filter Callback
-
-Method: (async) `DB.findByFilterCallbackFor(entity, filterCallback)`
-
-Arguments:
-
-- _entity_ : Registered entity name. Please use the `DB.getEntities()` method to avoid spelling mistakes.
-
-- _filterCallback_ : A callback function for filtering specific fields with specific values.
-
-Returns: An array of data objects that fulfills the filterCallback.
-
-```javascript
-const category2 = await DB.findByFilterCallbackFor(
-  DB.getEntities().categories,
-  (obj) => {
-    return obj.name === "category 2";
-  }
 );
 ```
 
