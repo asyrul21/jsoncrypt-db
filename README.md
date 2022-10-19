@@ -1,6 +1,4 @@
-# Refridgerator: a simple data store for Node JS (BETA)
-
-> This module is currently under further testing. You may not want to install it just yet.
+# jsoncrypt-db: a simple data store for Node JS
 
 This module presents a simple, lightweight, east-to-use, unstructured (no-sql), encrypted, flexible, and deploy-ready file-based data storage for Node JS. It has only 1 dependency, and allows clients to implement data persistent application without having to think about what database to use (mongo/my-sql/sql server/oracle db etc.), where, and how to deploy them. You can implement it either within your server/backend application, or even deploy it on its own as a service.
 
@@ -72,7 +70,9 @@ Some important notes:
 
 # Installation
 
-PLEASE DO NOT INSTALL THIS YET, as it is still under testing.
+```bash
+npm install --save jsoncrypt-db
+```
 
 # Basic Setup
 
@@ -112,7 +112,7 @@ Arguments:
 
 ```javascript
 // import
-const DB = require("refridgerator");
+const DB = require("jsoncrypt-db");
 
 // 1. register your entities - it should be a string of ONE plural word
 DB.registerEntity("categories");
