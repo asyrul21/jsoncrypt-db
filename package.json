@@ -1,6 +1,6 @@
 {
   "name": "jsoncrypt-db",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A simple, east-to-use, encrypted, flexible, and production-ready file-based data storage for NodeJS applications.",
   "main": "index.js",
   "scripts": {

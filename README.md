@@ -425,10 +425,18 @@ Returns: Updated array of data for that entity.
 > Note that this method only stores and updates the database in local memory. To save it, you need to call the `.saveFor` or `.saveAll` method.
 
 ```javascript
-const data = await DB.createManyNewFor(
-  DB.getEntities().categories,
-  SAMPLE_CATEGORIES_DATA
-);
+const data = await DB.createManyNewFor(DB.getEntities().categories, [
+  {
+    id: "123",
+    name: "category 1",
+    description: "sample category 1 description",
+  },
+  {
+    id: "456",
+    name: "category 2",
+    description: "sample category 2 description",
+  },
+]);
 await DB.saveFor(DB.getEntities().categories);
 ```
 
@@ -472,10 +480,7 @@ Returns: Updated array of data for that entity.
 > Note that this method only stores and updates the database in local memory. To save it, you need to call the `.saveFor` or `.saveAll` method.
 
 ```javascript
-inMemoryData = await DB.deleteFor(
-  DB.getEntities().categories,
-  SAMPLE_CATEGORIES_DATA[1].id
-);
+const data = await DB.deleteFor(DB.getEntities().categories, "777");
 await DB.saveFor(DB.getEntities().categories);
 ```
 
